@@ -19,7 +19,7 @@ func TestCreateWritesBuildableProjectContract(t *testing.T) {
 		t.Fatalf("module = %q", result.Module)
 	}
 	wants := map[string][]string{
-		"go.mod":  {"module example.com/my-game", "replace github.com/Djunichi/gopdsdk => " + strconv.Quote(filepath.ToSlash(sdkDir))},
+		"go.mod":  {"module example.com/my-game", "replace github.com/ivan-gromov-dev/gopdsdk => " + strconv.Quote(filepath.ToSlash(sdkDir))},
 		"game.go": {"// Package game", "func New() playdate.Game", "context.DrawText"},
 		"pdxinfo": {"name=My Game", "author=Your Name", "bundleID=com.example.my-game", "buildNumber=1"},
 	}
@@ -46,7 +46,7 @@ func TestCreateWritesPublishedModuleContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(contents)
-	if !strings.Contains(got, "require github.com/Djunichi/gopdsdk v0.1.0") {
+	if !strings.Contains(got, "require github.com/ivan-gromov-dev/gopdsdk v0.1.0") {
 		t.Fatalf("go.mod = %q", got)
 	}
 	if strings.Contains(got, "replace ") {

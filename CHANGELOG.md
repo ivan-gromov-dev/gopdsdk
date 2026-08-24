@@ -7,6 +7,9 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Changed the canonical module, import, documentation, release, and repository
+  paths to `github.com/ivan-gromov-dev/gopdsdk` after the GitHub account rename.
+
 ## v1.0.0 (2026-08-18)
 
 - Released the stable `v1.0.0` contract. The exported `playdate` APIs,
@@ -689,7 +692,7 @@ requires an explicitly documented exception.
   context restoration.
 - A deterministic `examples/framebuffer` scene covering portable pixel layout,
   dirty-range aggregation, callback lifetime, and owned offscreen drawing.
-- The external [Crank Caverns](https://github.com/Djunichi/gopdsdkgame)
+- The external [Crank Caverns](https://github.com/ivan-gromov-dev/gopdsdkgame)
   acceptance game, currently in a private repository, integrating every
   implemented P1-P3 gameplay slice through public `gopdsdk` API.
 

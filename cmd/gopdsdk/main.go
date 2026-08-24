@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Djunichi/gopdsdk/internal/features/build"
-	"github.com/Djunichi/gopdsdk/internal/features/deviceconnect"
-	"github.com/Djunichi/gopdsdk/internal/features/devicelog"
-	"github.com/Djunichi/gopdsdk/internal/features/deviceprobe"
-	"github.com/Djunichi/gopdsdk/internal/features/doctor"
-	"github.com/Djunichi/gopdsdk/internal/features/initproject"
-	"github.com/Djunichi/gopdsdk/internal/features/simprobe"
-	"github.com/Djunichi/gopdsdk/internal/features/simrun"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/build"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/deviceconnect"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/devicelog"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/deviceprobe"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/doctor"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/initproject"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/simprobe"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/simrun"
 )
 
 func main() {

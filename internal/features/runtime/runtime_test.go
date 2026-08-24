@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 func TestOwnedFontMeasurementAndClose(t *testing.T) {

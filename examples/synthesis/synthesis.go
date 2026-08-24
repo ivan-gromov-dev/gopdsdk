@@ -1,7 +1,7 @@
 // Package synthesis demonstrates P9.3 envelope shaping and native synthesis.
 package synthesis
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 type game struct {
 	synth     playdate.Synth

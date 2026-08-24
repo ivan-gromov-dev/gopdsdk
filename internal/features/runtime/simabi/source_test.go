@@ -11,16 +11,16 @@ func TestRender(t *testing.T) {
 	header := filepath.Join(t.TempDir(), "SDK with spaces", "C_API", "pd_api.h")
 	sources, err := Render(Config{
 		APIHeader:         header,
-		RuntimeImport:     "github.com/Djunichi/gopdsdk/internal/features/runtime",
-		PlaydateImport:    "github.com/Djunichi/gopdsdk/playdate",
-		ApplicationImport: "github.com/Djunichi/gopdsdk/probe/app",
+		RuntimeImport:     "github.com/ivan-gromov-dev/gopdsdk/internal/features/runtime",
+		PlaydateImport:    "github.com/ivan-gromov-dev/gopdsdk/playdate",
+		ApplicationImport: "github.com/ivan-gromov-dev/gopdsdk/probe/app",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
 		"#include " + strconv.Quote(filepath.ToSlash(header)),
-		`github.com/Djunichi/gopdsdk/probe/app`,
+		`github.com/ivan-gromov-dev/gopdsdk/probe/app`,
 		"sdkRuntime.NewApplication(app.New(), gameContext",
 		"application.Handle",
 		"application.Update",

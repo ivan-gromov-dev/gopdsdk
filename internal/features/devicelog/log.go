@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 )
 
 // Kind identifies a diagnostic log stored at the Playdate data-disk root.

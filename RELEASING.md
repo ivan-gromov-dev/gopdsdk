@@ -37,8 +37,8 @@ published; for example:
 
 ```sh
 go mod init example.com/release-check
-go get github.com/Djunichi/gopdsdk@v0.9.0
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v0.9.0 doctor
+go get github.com/ivan-gromov-dev/gopdsdk@v0.9.0
+go run github.com/ivan-gromov-dev/gopdsdk/cmd/gopdsdk@v0.9.0 doctor
 ```
 
 Then compile and dry-run a standalone application against both targets. This

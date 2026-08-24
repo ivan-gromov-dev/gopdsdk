@@ -4,7 +4,7 @@ package navigation
 import (
 	"errors"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 var errLauncherUnavailable = errors.New("Playdate Launcher capability is unavailable")

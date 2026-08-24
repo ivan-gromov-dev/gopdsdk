@@ -8,7 +8,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 // FileDriver contains platform operations for one owned native file.

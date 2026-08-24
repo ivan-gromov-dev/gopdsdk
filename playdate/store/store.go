@@ -6,7 +6,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 // Migration upgrades a payload from one schema version to the next.

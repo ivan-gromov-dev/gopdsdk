@@ -1,6 +1,6 @@
 package runtime
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 var menuCallbacks = struct {
 	next  uint32

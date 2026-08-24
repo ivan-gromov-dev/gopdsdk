@@ -1,7 +1,7 @@
 // Package oomprobe intentionally exhausts the bounded device heap for acceptance.
 package oomprobe
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 const (
 	blockSize = 16 * 1024

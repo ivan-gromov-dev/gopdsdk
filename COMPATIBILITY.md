@@ -46,7 +46,7 @@ The `v1.0.0` release passed formatting, the full Go suite, vet,
 Windows SDK 3.1.1 `doctor --probe` for Simulator compilation and packaging plus
 TinyGo conservative hard-float compile, link, relocation, and packaging on
 2026-08-18. Read-only USB probing detected a Playdate on COM3. GitHub Actions
-[run 161](https://github.com/Djunichi/gopdsdk/actions/runs/32177000844)
+[run 161](https://github.com/ivan-gromov-dev/gopdsdk/actions/runs/32177000844)
 passed native jobs on Windows, macOS, and Linux and the Linux race detector for
 the release code. The user confirmed the final combined acceptance-scene
 Simulator interaction, extended physical-device regression, memory/resource
@@ -64,7 +64,7 @@ or post-run logs.
 
 The stable `v0.11.0` tag and hosted GitHub release were published on
 2026-08-18 from commit `3a5d288e54fef2d3daefb05eed165a6f902f64d8`.
-The Go module proxy resolves `github.com/Djunichi/gopdsdk@v0.11.0` to that
+The Go module proxy resolves `github.com/ivan-gromov-dev/gopdsdk@v0.11.0` to that
 exact commit without a local `replace`.
 
 The v0.11.0 release candidate passed formatting, the full Go suite and vet on

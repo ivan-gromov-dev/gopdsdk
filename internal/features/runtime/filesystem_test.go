@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 func TestOwnedFileIOAndLifetime(t *testing.T) {

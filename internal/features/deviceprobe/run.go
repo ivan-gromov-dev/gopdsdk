@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 )
 
 // Run executes the device probe command.

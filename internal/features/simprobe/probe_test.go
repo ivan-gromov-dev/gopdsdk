@@ -35,12 +35,12 @@ func TestRenderProbeApplication(t *testing.T) {
 	initMarker := filepath.Join(t.TempDir(), "Temp path", "init.marker")
 	updateMarker := filepath.Join(t.TempDir(), "Temp path", "update.marker")
 	source := renderProbeApplication(
-		"github.com/Djunichi/gopdsdk",
+		"github.com/ivan-gromov-dev/gopdsdk",
 		initMarker,
 		updateMarker,
 	)
 	for _, want := range []string{
-		`"github.com/Djunichi/gopdsdk/playdate"`,
+		`"github.com/ivan-gromov-dev/gopdsdk/playdate"`,
 		strconv.Quote(filepath.ToSlash(initMarker)),
 		strconv.Quote(filepath.ToSlash(updateMarker)),
 		`context.DrawText("Hello from gopdsdk", 16, 16)`,

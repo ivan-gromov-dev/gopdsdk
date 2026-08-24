@@ -82,8 +82,8 @@ TinyGo and the Arm toolchain are unnecessary for Simulator-only development.
 Run the released CLI directly at that version:
 
 ```sh
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v1.0.0 doctor
-go run github.com/Djunichi/gopdsdk/cmd/gopdsdk@v1.0.0 init --module example.com/my-game ./my-game
+go run github.com/ivan-gromov-dev/gopdsdk/cmd/gopdsdk@v1.0.0 doctor
+go run github.com/ivan-gromov-dev/gopdsdk/cmd/gopdsdk@v1.0.0 init --module example.com/my-game ./my-game
 cd my-game
 go mod tidy
 ```
@@ -757,7 +757,7 @@ loading, caching, rollback, transition, and shutdown policy.
 
 ## Integrated acceptance game
 
-The external [Crank Caverns](https://github.com/Djunichi/gopdsdkgame) game
+The external [Crank Caverns](https://github.com/ivan-gromov-dev/gopdsdkgame) game
 completes the integrated consumer slice. Its repository is currently private, but the
 link is retained as the canonical acceptance-game reference. It uses only the
 public `gopdsdk` API and integrates lifecycle and input, crank control, owned

@@ -5,7 +5,7 @@ package lifecycleinput
 import (
 	"strconv"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 const requiredSoakSeconds = 60

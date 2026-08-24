@@ -56,7 +56,7 @@ func exportedAPI(t *testing.T) string {
 	}
 
 	config := types.Config{Importer: importer.Default()}
-	pkg, err := config.Check("github.com/Djunichi/gopdsdk/playdate", set, parsed, nil)
+	pkg, err := config.Check("github.com/ivan-gromov-dev/gopdsdk/playdate", set, parsed, nil)
 	if err != nil {
 		t.Fatalf("type-check playdate: %v", err)
 	}

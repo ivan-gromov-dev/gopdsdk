@@ -5,7 +5,7 @@ package systemenvironment
 import (
 	"strconv"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 type game struct {

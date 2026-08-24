@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	pdjson "github.com/Djunichi/gopdsdk/playdate/json"
+	pdjson "github.com/ivan-gromov-dev/gopdsdk/playdate/json"
 )
 
 func TestAcceptanceSchemaAndBoundedEncoding(t *testing.T) {

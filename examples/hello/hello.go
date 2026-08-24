@@ -1,7 +1,7 @@
 // Package hello provides the minimal gopdsdk Simulator example.
 package hello
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 type game struct{}
 

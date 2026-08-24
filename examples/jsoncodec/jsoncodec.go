@@ -5,8 +5,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/Djunichi/gopdsdk/playdate"
-	pdjson "github.com/Djunichi/gopdsdk/playdate/json"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
+	pdjson "github.com/ivan-gromov-dev/gopdsdk/playdate/json"
 )
 
 type game struct{ summary string }

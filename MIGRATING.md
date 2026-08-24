@@ -62,5 +62,5 @@ post-v1.0 `v1.1 networking` research.
 ## Published-module verification
 
 After publication, remove any local `replace`, require
-`github.com/Djunichi/gopdsdk v1.0.0`, and
+`github.com/ivan-gromov-dev/gopdsdk v1.0.0`, and
 repeat the clean module-proxy check from [RELEASING.md](RELEASING.md).

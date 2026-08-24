@@ -3,7 +3,7 @@ package systemstatus
 import (
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 func TestPowerText(t *testing.T) {

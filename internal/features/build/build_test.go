@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 )
 
 func TestRenderGoModForSameModule(t *testing.T) {
@@ -13,10 +13,10 @@ func TestRenderGoModForSameModule(t *testing.T) {
 	info := module{Path: sdkModule, Dir: sdkDir, GoVersion: "1.26.5"}
 	goMod := renderGoMod(info, info)
 	for _, want := range []string{
-		"module github.com/Djunichi/gopdsdk/build",
+		"module github.com/ivan-gromov-dev/gopdsdk/build",
 		"go 1.26.5",
-		"require github.com/Djunichi/gopdsdk v0.0.0",
-		"replace github.com/Djunichi/gopdsdk => " + gomodule.FormatPath(sdkDir),
+		"require github.com/ivan-gromov-dev/gopdsdk v0.0.0",
+		"replace github.com/ivan-gromov-dev/gopdsdk => " + gomodule.FormatPath(sdkDir),
 	} {
 		if !strings.Contains(goMod, want) {
 			t.Errorf("renderGoMod() does not contain %q:\n%s", want, goMod)
@@ -32,7 +32,7 @@ func TestRenderGoModForExternalApplication(t *testing.T) {
 		module{Path: "example.com/game", Dir: gameDir, GoVersion: "1.26.5"},
 	)
 	for _, want := range []string{
-		"require github.com/Djunichi/gopdsdk v0.1.0",
+		"require github.com/ivan-gromov-dev/gopdsdk v0.1.0",
 		"require example.com/game v0.0.0",
 		"replace example.com/game => " + gomodule.FormatPath(gameDir),
 	} {

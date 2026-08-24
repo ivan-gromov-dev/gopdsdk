@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 )
 
 // ErrNoDevice indicates that pdutil could not detect a connected Playdate.

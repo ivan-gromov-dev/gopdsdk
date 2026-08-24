@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/internal/features/build"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/build"
 )
 
 func TestRunBuildsWithReplacementAndLaunches(t *testing.T) {

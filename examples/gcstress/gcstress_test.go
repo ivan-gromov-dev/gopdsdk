@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/toolchainprofile"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 type testContext struct{ milliseconds uint32 }

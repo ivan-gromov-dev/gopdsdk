@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
-	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 )
 
 func TestSpritePresentationBridgesExistInBothDeviceProfiles(t *testing.T) {
@@ -34,7 +34,7 @@ func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
 	gameDir := filepath.Join(t.TempDir(), "game")
 	app := applicationInfo{ImportPath: "example.com/game/pkg", Name: "pkg", Dir: filepath.Join(gameDir, "pkg")}
 	app.Module = &struct{ Path, Dir, GoVersion string }{Path: "example.com/game", Dir: gameDir, GoVersion: "1.26"}
-	got := renderDeviceGoMod(gomodule.Info{Path: "github.com/Djunichi/gopdsdk", Root: filepath.Join(t.TempDir(), "sdk"), GoVersion: "1.26"}, app)
+	got := renderDeviceGoMod(gomodule.Info{Path: "github.com/ivan-gromov-dev/gopdsdk", Root: filepath.Join(t.TempDir(), "sdk"), GoVersion: "1.26"}, app)
 	for _, want := range []string{"require example.com/game v0.0.0", "replace example.com/game =>", strconv.Quote(filepath.ToSlash(gameDir))} {
 		if !strings.Contains(got, want) {
 			t.Errorf("renderDeviceGoMod() does not contain %q:\n%s", want, got)
@@ -43,7 +43,7 @@ func TestRenderDeviceGoModAddsExternalApplicationModule(t *testing.T) {
 }
 
 func TestProbeSourceExportsGoEventHandler(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"bridgeLoadVideo", "bridgeVideoRenderFrame", "sdkRuntime.NewVideoPlayer"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
@@ -57,7 +57,7 @@ func TestProbeSourceExportsGoEventHandler(t *testing.T) {
 }
 
 func TestBothDeviceAdaptersContainDisplayIntrospection(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"bridgeDisplayWidth", "bridgeDisplayHeight", "bridgeDisplayRefreshRateBits", "bridgeDisplayFPSBits"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
@@ -73,7 +73,7 @@ func TestBothDeviceAdaptersContainDisplayIntrospection(t *testing.T) {
 }
 
 func TestProbeSourceContainsCollisionBridge(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"bridgeSpriteSetCollideRectBits", "bridgeSpriteMoveWithCollisionsBits", "bridgeSpriteCheckCollisionsBits", "bridgeQuerySpritesAtPointBits", "bridgeQuerySpritesInRectBits", "bridgeQuerySpritesAlongLineBits", "bridgeQuerySpriteInfoAlongLineBits", "bridgeSpriteRemoveMany", "bridgeRemoveAllSprites", "bridgeSpriteCount", "bridgeResetCollisionWorld", "sdkRuntime.NativeCollision", "bridgeFreeList(list)"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
@@ -85,7 +85,7 @@ func TestProbeSourceContainsCollisionBridge(t *testing.T) {
 }
 
 func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"sdkPlaydate.FileSystem", "sdkRuntime.NewOwnedFile", "bridgeFileOpen", "bridgeFileList", "bridgeFileRename", "copiedCString(bridgeFileListItem", "func fileErrorMessage() string { pointer:=bridgeFileError();if pointer==0{return \"\"};return copiedCString(pointer) }"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
@@ -109,7 +109,7 @@ func TestBothDeviceAdaptersContainFilesystemBridge(t *testing.T) {
 }
 
 func TestBothDeviceAdaptersContainOnlineAndDebugBridges(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"sdkPlaydate.Scoreboards", "sdkPlaydate.DebugMessages", "goSerialMessage", "goScoreCallback", "sdkRuntime.NewScoreboardService", "sdkRuntime.ScoreboardCallbackQueue", "scoreboardCallbacks.Drain()", "scoreboardService.Terminate()", "bridgeGetScores"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
@@ -125,7 +125,7 @@ func TestBothDeviceAdaptersContainOnlineAndDebugBridges(t *testing.T) {
 }
 
 func TestBothDeviceAdaptersContainSystemStatusBridge(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"bridgeSetAccelerometerEnabled", "bridgeAccelerometer", "bridgePowerStatus", "bridgeBatteryPercentageBits", "bridgeBatteryVoltageBits", "bridgeSystemVolumeBits", "float32FromBits(bridgeBatteryPercentageBits())", "bridgeReduceFlashing", "bridgeTimezoneOffsetSeconds", "bridgeUses24HourTime", "bridgeDefaultAudioChannel", "bridgeAudioOutputState", "bridgeSetAudioOutputsActive", "sdkRuntime.DefaultAudioChannel"} {
 		if !strings.Contains(source, want) {
 			t.Errorf("probe source does not contain %q", want)
@@ -141,7 +141,7 @@ func TestBothDeviceAdaptersContainSystemStatusBridge(t *testing.T) {
 }
 
 func TestBothDeviceAdaptersContainP101SystemControls(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{
 		"sdkPlaydate.SystemControls", "bridgeGetLaunchArgs", "bridgeRestartGame",
 		"bridgeSetMenuImage", "bridgeSetAutoLockDisabled", "bridgeSetCrankSoundsDisabled",
@@ -170,7 +170,7 @@ func TestBothDeviceAdaptersContainP101SystemControls(t *testing.T) {
 }
 
 func TestBothDeviceAdaptersContainP102SystemEnvironment(t *testing.T) {
-	source := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	source := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{
 		"sdkPlaydate.SystemEnvironment", "bridgeCurrentEpochTime", "bridgeEpochToDateTime",
 		"bridgeDateTimeToEpoch", "bridgeResetElapsedTime", "bridgeElapsedTimeBits",
@@ -264,7 +264,7 @@ func TestBothDeviceBootstrapsContainFramebufferAndOffscreenBridges(t *testing.T)
 }
 
 func TestDeviceMicrophoneDefersAudioThreadDeliveryToUpdate(t *testing.T) {
-	goSource := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	goSource := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"bridgePollMicrophonePermission", "bridgePollMicrophoneSamples", "microphonePollBuffer"} {
 		if !strings.Contains(goSource, want) {
 			t.Errorf("device Go source does not contain %q", want)
@@ -281,7 +281,7 @@ func TestDeviceMicrophoneDefersAudioThreadDeliveryToUpdate(t *testing.T) {
 }
 
 func TestDevicePCMSampleCopiesCallerDataIntoNativeOwnership(t *testing.T) {
-	goSource := renderProbeSource("github.com/Djunichi/gopdsdk", "example.com/game")
+	goSource := renderProbeSource("github.com/ivan-gromov-dev/gopdsdk", "example.com/game")
 	for _, want := range []string{"sdkPlaydate.PCMPlayers", "bridgeNewPCMPlayer(&samples[0]"} {
 		if !strings.Contains(goSource, want) {
 			t.Errorf("device Go source does not contain %q", want)

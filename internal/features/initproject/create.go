@@ -9,10 +9,10 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 )
 
-const sdkModule = "github.com/Djunichi/gopdsdk"
+const sdkModule = "github.com/ivan-gromov-dev/gopdsdk"
 
 var releaseVersionPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 
@@ -150,7 +150,7 @@ func renderGame() string {
 	return `// Package game contains the Playdate application.
 package game
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 type game struct{}
 

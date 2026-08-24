@@ -3,7 +3,7 @@ package systemcontrol
 import (
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 type bitmap struct{ closed bool }

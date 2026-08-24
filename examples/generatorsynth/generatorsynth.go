@@ -1,7 +1,7 @@
 // Package generatorsynth demonstrates a polyphonic device-safe custom synth.
 package generatorsynth
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 type game struct {
 	synth      playdate.GeneratorSynth

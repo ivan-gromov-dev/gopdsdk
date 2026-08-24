@@ -3,7 +3,7 @@ package doctor
 import (
 	"strings"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/toolchainprofile"
 )
 
 func matchesVerifiedTool(name, version string) bool {

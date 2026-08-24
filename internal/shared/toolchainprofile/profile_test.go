@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
-	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/toolchainprofile"
 )
 
 func TestAcceptedProfileMatchesModuleAndDefaultDevicePlan(t *testing.T) {

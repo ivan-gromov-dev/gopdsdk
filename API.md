@@ -20,21 +20,21 @@ error identity, callback ordering and lifetime contracts, not to unspecified
 implementation details or exact error strings.
 
 Applications import the native contract from
-`github.com/Djunichi/gopdsdk/playdate`. Applications that need the optional
+`github.com/ivan-gromov-dev/gopdsdk/playdate`. Applications that need the optional
 bounded persistence layer additionally import
-`github.com/Djunichi/gopdsdk/playdate/store`. External games collecting bounded
+`github.com/ivan-gromov-dev/gopdsdk/playdate/store`. External games collecting bounded
 performance evidence import
-`github.com/Djunichi/gopdsdk/playdate/diagnostics`. Packages below `internal/`,
+`github.com/ivan-gromov-dev/gopdsdk/playdate/diagnostics`. Packages below `internal/`,
 generated runtime bridges, CLI build plans, and example internals are not
 public API.
 
 Applications that need device-safe JSON import
-`github.com/Djunichi/gopdsdk/playdate/json`. The package replaces the official
+`github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or
 `recover`.
 
 Applications that need bounded cooperative work import
-`github.com/Djunichi/gopdsdk/playdate/schedule`.
+`github.com/ivan-gromov-dev/gopdsdk/playdate/schedule`.
 
 ## Bounded cooperative scheduling
 

@@ -4,7 +4,7 @@ package framebuffer
 import (
 	"errors"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 var errCapabilities = errors.New("P3.2 graphics capabilities are unavailable")

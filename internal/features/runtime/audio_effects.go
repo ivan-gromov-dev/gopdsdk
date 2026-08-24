@@ -1,6 +1,6 @@
 package runtime
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 // EffectDriver contains operations common to native channel effects.
 type EffectDriver struct {

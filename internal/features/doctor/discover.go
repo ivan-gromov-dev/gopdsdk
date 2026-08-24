@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
-	"github.com/Djunichi/gopdsdk/internal/shared/toolchainprofile"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/toolchainprofile"
 )
 
 type sdkCandidate struct {

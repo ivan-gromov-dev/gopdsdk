@@ -1,6 +1,6 @@
 package runtime
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 // ScoreboardDriver is the native boundary used by ScoreboardService. A false
 // return means the SDK rejected the request before scheduling its callback.

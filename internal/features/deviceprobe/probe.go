@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
-	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
-	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
-	"github.com/Djunichi/gopdsdk/internal/shared/pdxsource"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/pdxsource"
 )
 
 // Result records the verified device toolchain stage.

@@ -1,6 +1,6 @@
 package runtime
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 // InstrumentDriver contains native operations for an owned voice bank.
 type InstrumentDriver struct {

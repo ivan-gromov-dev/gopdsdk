@@ -3,7 +3,7 @@ package generatorsynth
 import (
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 func TestRenderUsesRateVoiceAndParameter(t *testing.T) {

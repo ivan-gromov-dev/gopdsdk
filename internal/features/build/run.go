@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 )
 
 // Run executes the build command.

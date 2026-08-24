@@ -27,7 +27,7 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(goMod), "replace github.com/Djunichi/gopdsdk =>") {
+	if !strings.Contains(string(goMod), "replace github.com/ivan-gromov-dev/gopdsdk =>") {
 		t.Fatalf("checkout acceptance go.mod does not contain a local replace:\n%s", goMod)
 	}
 	runTestCommand(t, project, "go", "mod", "tidy")

@@ -5,7 +5,7 @@ package systemcontrol
 import (
 	"strconv"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 const buttonQueueSize = 16

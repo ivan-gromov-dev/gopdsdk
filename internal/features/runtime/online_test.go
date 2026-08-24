@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 func TestScoreboardServiceBoundsAndCopiesCallbacks(t *testing.T) {

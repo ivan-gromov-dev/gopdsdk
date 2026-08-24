@@ -12,7 +12,7 @@ import (
 )
 
 // Path is the canonical gopdsdk module path.
-const Path = "github.com/Djunichi/gopdsdk"
+const Path = "github.com/ivan-gromov-dev/gopdsdk"
 
 // Info identifies the active gopdsdk module.
 type Info struct {

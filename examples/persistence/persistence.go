@@ -4,8 +4,8 @@ package persistence
 import (
 	"errors"
 
-	"github.com/Djunichi/gopdsdk/playdate"
-	"github.com/Djunichi/gopdsdk/playdate/store"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate/store"
 )
 
 const (

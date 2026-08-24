@@ -1,7 +1,7 @@
 // Package debugmessages exercises the P4.5 bounded diagnostic-message input.
 package debugmessages
 
-import "github.com/Djunichi/gopdsdk/playdate"
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 
 type game struct {
 	messages playdate.DebugMessages

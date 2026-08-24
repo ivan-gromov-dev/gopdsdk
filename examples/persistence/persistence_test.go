@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Djunichi/gopdsdk/playdate"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 )
 
 type memoryFiles struct{ values map[string][]byte }

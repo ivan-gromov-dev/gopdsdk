@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/Djunichi/gopdsdk/internal/features/build"
-	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/build"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 )
 
 // Options supplies run dependencies for the command boundary.

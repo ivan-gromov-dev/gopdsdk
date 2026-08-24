@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
-	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
-	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/runtime/simabi"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 )
 
 // Config identifies the Playdate SDK used by the probe.

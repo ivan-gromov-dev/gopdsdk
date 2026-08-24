@@ -4,8 +4,8 @@ package schedule
 import (
 	"strconv"
 
-	"github.com/Djunichi/gopdsdk/playdate"
-	pdschedule "github.com/Djunichi/gopdsdk/playdate/schedule"
+	"github.com/ivan-gromov-dev/gopdsdk/playdate"
+	pdschedule "github.com/ivan-gromov-dev/gopdsdk/playdate/schedule"
 )
 
 const (

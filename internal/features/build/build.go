@@ -13,14 +13,14 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Djunichi/gopdsdk/internal/features/runtime/simabi"
-	"github.com/Djunichi/gopdsdk/internal/shared/buildplan"
-	"github.com/Djunichi/gopdsdk/internal/shared/gomodule"
-	"github.com/Djunichi/gopdsdk/internal/shared/hostpolicy"
-	"github.com/Djunichi/gopdsdk/internal/shared/pdxsource"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/runtime/simabi"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/pdxsource"
 )
 
-const sdkModule = "github.com/Djunichi/gopdsdk"
+const sdkModule = "github.com/ivan-gromov-dev/gopdsdk"
 
 // Config identifies a Simulator application build.
 type Config struct {

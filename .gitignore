@@ -35,6 +35,7 @@ go.work.sum
 # Internal docs
 docs/*
 !docs/ROADMAP.md
+!docs/ANALYZER_ROADMAP.md
 !docs/assets/
 
 # Local build caches

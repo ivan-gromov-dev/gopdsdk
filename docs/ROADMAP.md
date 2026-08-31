@@ -1,7 +1,7 @@
 # Product roadmap
 
 Status: `v1.0.0` is released with the stable offline contract, updated
-2026-08-18.
+2026-08-31.
 
 This is the canonical post-1.0 planning document. Released capability and
 evidence live in [COMPATIBILITY.md](../COMPATIBILITY.md) and
@@ -49,6 +49,22 @@ transitions, long-lived resource ownership, saves and recovery, audio,
 callbacks, lifecycle paths, performance budgets, packaging, and release
 operations. Findings become normal `v1.x` compatibility fixes or evidence;
 they do not retroactively gate `v1.0.0`.
+
+## Post-1.0 static analyzer and IDE diagnostics
+
+Build the broadest practical version-matched analyzer for the documented
+gopdsdk application and device contracts. It should cover device portability,
+application shape, lifecycle, optional capabilities, callback-scoped data,
+resource ownership, retention graphs, error handling, bounds, hot-path risk,
+workspace metadata, manifests, assets, structured CI output, safe fixes, and
+live VS Code and GoLand diagnostics without duplicating general Go tooling.
+
+The ordered implementation plan, rule catalog, milestones, verification gates,
+and static-analysis limits live in
+[ANALYZER_ROADMAP.md](ANALYZER_ROADMAP.md). That document is the canonical
+source for analyzer scope; keep this product roadmap at the capability level.
+Integrated build, run, log, and debugger adapters remain a subsequent IDE
+tooling scope rather than analyzer evidence.
 
 ## `v1.1.0` — networking and multiplayer feasibility
 

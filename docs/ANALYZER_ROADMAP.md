@@ -1,6 +1,6 @@
 # Static analyzer roadmap
 
-Status: implementation started at Step 0. Updated 2026-08-31.
+Status: implementation active in Steps 0–1. Updated 2026-08-31.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -134,6 +134,13 @@ implementation code, and no rule depends solely on observed third-party
 behavior.
 
 ### Step 1 — Build the analyzer kernel
+
+In progress: the kernel loads an explicit external module through
+`golang.org/x/tools/go/packages` with package patterns, build tags, tests,
+overlays, target identity, read-only module mode, and context cancellation. It
+normalizes deterministic package, file, role, and partial load-error models.
+Registry execution, shared control-flow/SSA/fact providers, and broader
+classification remain to complete this step.
 
 Introduce the analyzer feature without reporting SDK diagnostics yet.
 

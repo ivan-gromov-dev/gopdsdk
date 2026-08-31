@@ -96,9 +96,11 @@ inventory and an immutable rule catalog with deterministic stable and
 experimental selection. It validates identifier families and normative
 document anchors, checks referenced exported declarations against the source
 tree, and supplies type-checking external positive/negative fixture packages
-spanning every planned contract shape. Expanding and reviewing the inventory
-against the complete public API and official SDK sources remains to complete
-this step.
+spanning every planned contract shape. A reverse API audit requires every
+public interface with a direct `Close` method to have owned, borrowed, or close
+semantics in the inventory. Expanding the same coverage discipline to the
+remaining public contracts and reviewing them against official SDK sources
+remains to complete this step.
 
 Create the source-of-truth inventory from `API.md`, exported Go declarations,
 official SDK documentation, the device profile, and existing examples.

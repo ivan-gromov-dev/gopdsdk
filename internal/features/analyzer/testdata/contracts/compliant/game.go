@@ -63,6 +63,29 @@ func useBorrowedFrame(table playdate.BitmapTable) error {
 	return err
 }
 
+// analyzer-contract: bitmap-table-close-semantics positive
+func closeBitmapTable(table playdate.BitmapTable) error { return table.Close() }
+
+// analyzer-contract: sprite-close-semantics positive
+func closeSprite(sprite playdate.Sprite) error {
+	if err := sprite.Remove(); err != nil {
+		return err
+	}
+	return sprite.Close()
+}
+
+// analyzer-contract: audio-close-semantics positive
+func closeSoundEffect(effect playdate.SoundEffect) error { return effect.Close() }
+
+// analyzer-contract: font-close-semantics positive
+func closeFont(font playdate.Font) error { return font.Close() }
+
+// analyzer-contract: file-close-semantics positive
+func closeFile(file playdate.File) error { return file.Close() }
+
+// analyzer-contract: video-close-semantics positive
+func closeVideo(player playdate.VideoPlayer) error { return player.Close() }
+
 // analyzer-contract: menu-image-retention positive
 // analyzer-contract: menu-image-offset-bound positive
 func installMenuImage(controls playdate.SystemControls, bitmap playdate.Bitmap) error {

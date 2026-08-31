@@ -50,6 +50,46 @@ func closeBorrowedFrame(table playdate.BitmapTable) error {
 	return frame.Close()
 }
 
+// analyzer-contract: bitmap-table-close-semantics negative
+func useFrameAfterTableClose(table playdate.BitmapTable) error {
+	frame, err := table.Frame(0)
+	if err != nil {
+		return err
+	}
+	if err := table.Close(); err != nil {
+		return err
+	}
+	_, err = frame.Width()
+	return err
+}
+
+// analyzer-contract: sprite-close-semantics negative
+func closeSpriteTwice(sprite playdate.Sprite) error {
+	_ = sprite.Close()
+	return sprite.Close()
+}
+
+// analyzer-contract: audio-close-semantics negative
+func closeSoundEffectTwice(effect playdate.SoundEffect) error {
+	_ = effect.Close()
+	return effect.Close()
+}
+
+// analyzer-contract: font-close-semantics negative
+func closeFontTwice(font playdate.Font) error {
+	_ = font.Close()
+	return font.Close()
+}
+
+// analyzer-contract: file-close-semantics negative
+func discardFileCloseError(file playdate.File) { _ = file.Close() }
+
+// analyzer-contract: video-close-semantics negative
+func closeVideoTwice(player playdate.VideoPlayer) error {
+	_ = player.Close()
+	return player.Close()
+}
+
 // analyzer-contract: menu-image-retention negative
 func closeRetainedMenuImage(controls playdate.SystemControls, bitmap playdate.Bitmap) error {
 	if err := controls.SetMenuImage(bitmap, 0); err != nil {

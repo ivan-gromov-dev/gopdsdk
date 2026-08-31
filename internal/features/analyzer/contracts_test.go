@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -74,6 +75,31 @@ func TestInventoryDocumentationReferencesExist(t *testing.T) {
 		if !markdownHasAnchor(content, anchor) {
 			t.Errorf("contract %q references missing anchor %q in %s", contract.ID, anchor, path)
 		}
+	}
+}
+
+func TestEveryPublicCloseContractIsClassified(t *testing.T) {
+	public := exportedSymbols(t, filepath.Join(repositoryRoot(t), "playdate"))
+	classified := make(map[string]bool)
+	for _, contract := range ContractInventory().Contracts {
+		if contract.Kind != ContractOwnedHandle && contract.Kind != ContractBorrowedHandle && contract.Kind != ContractClose {
+			continue
+		}
+		for _, symbol := range contract.PublicAPI {
+			if symbol.Package == "playdate" && symbol.Member == "Close" {
+				classified[symbol.Name+".Close"] = true
+			}
+		}
+	}
+	var missing []string
+	for symbol := range public {
+		if strings.HasSuffix(symbol, ".Close") && !classified[symbol] {
+			missing = append(missing, symbol)
+		}
+	}
+	slices.Sort(missing)
+	if len(missing) != 0 {
+		t.Fatalf("public Close contracts missing from analyzer inventory: %s", strings.Join(missing, ", "))
 	}
 }
 

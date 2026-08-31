@@ -98,9 +98,15 @@ document anchors, checks referenced exported declarations against the source
 tree, and supplies type-checking external positive/negative fixture packages
 spanning every planned contract shape. A reverse API audit requires every
 public interface with a direct `Close` method to have owned, borrowed, or close
-semantics in the inventory. Expanding the same coverage discipline to the
-remaining public contracts and reviewing them against official SDK sources
-remains to complete this step.
+semantics in the inventory. The optional-capability inventory is additionally
+checked method-by-method against both native ABI contexts. Callback-scoped
+framebuffer, bitmap, microphone, and audio-render data each have positive and
+negative fixtures plus a stable lifetime-rule template. Device-profile Go
+symbols now explicitly classify forbidden, allowed, and replacement surfaces
+for concurrency, time, formatting, JSON, panic, cgo, reflection, and runtime
+control. Expanding the same coverage discipline to the remaining public
+contracts and reviewing them against official SDK sources remains to complete
+this step.
 
 Create the source-of-truth inventory from `API.md`, exported Go declarations,
 official SDK documentation, the device profile, and existing examples.

@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode"
 )
 
 func TestContractInventoryValid(t *testing.T) {
@@ -101,6 +102,117 @@ func TestEveryPublicCloseContractIsClassified(t *testing.T) {
 	if len(missing) != 0 {
 		t.Fatalf("public Close contracts missing from analyzer inventory: %s", strings.Join(missing, ", "))
 	}
+}
+
+func TestCallbackScopeContractsHaveLifetimeRules(t *testing.T) {
+	inventory := ContractInventory()
+	covered := make(map[string]bool)
+	for _, rule := range inventory.Rules {
+		if rule.Family != FamilyLifetime {
+			continue
+		}
+		for _, contractID := range rule.ContractIDs {
+			covered[contractID] = true
+		}
+	}
+	for _, contract := range inventory.Contracts {
+		if contract.Kind == ContractCallbackScope && !covered[contract.ID] {
+			t.Errorf("callback-scoped contract %q has no lifetime rule template", contract.ID)
+		}
+	}
+}
+
+func TestDeviceContractsClassifyEveryGoSymbol(t *testing.T) {
+	for _, contract := range ContractInventory().Contracts {
+		for _, symbol := range contract.GoSymbols {
+			if !symbol.Policy.valid() {
+				t.Errorf("contract %q leaves %s.%s unclassified", contract.ID, symbol.Package, symbol.Name)
+			}
+		}
+	}
+}
+
+func TestOptionalCapabilitiesExistInBothNativeContexts(t *testing.T) {
+	root := repositoryRoot(t)
+	methods := exportedInterfaceMethods(t, filepath.Join(root, "playdate"))
+	templates := []string{
+		filepath.Join(root, "internal", "features", "runtime", "simabi", "templates", "simulator.go.tmpl"),
+		filepath.Join(root, "internal", "features", "deviceprobe", "templates", "application.go.tmpl"),
+	}
+	contract := contractByID(t, "context-optional-capability")
+	for _, template := range templates {
+		data, err := os.ReadFile(template)
+		if err != nil {
+			t.Fatal(err)
+		}
+		normalized := strings.Map(func(character rune) rune {
+			if unicode.IsSpace(character) {
+				return -1
+			}
+			return character
+		}, string(data))
+		for _, capability := range contract.PublicAPI {
+			if capability.Name == "Context" {
+				continue
+			}
+			for _, method := range methods[capability.Name] {
+				needle := "func(playdateContext)" + method + "("
+				if !strings.Contains(normalized, needle) {
+					t.Errorf("%s does not implement inventoried capability method %s.%s", filepath.Base(template), capability.Name, method)
+				}
+			}
+		}
+	}
+}
+
+func contractByID(t *testing.T, id string) Contract {
+	t.Helper()
+	for _, contract := range ContractInventory().Contracts {
+		if contract.ID == id {
+			return contract
+		}
+	}
+	t.Fatalf("contract %q is missing", id)
+	return Contract{}
+}
+
+func exportedInterfaceMethods(t *testing.T, directory string) map[string][]string {
+	t.Helper()
+	parsed, err := parser.ParseDir(token.NewFileSet(), directory, func(info fs.FileInfo) bool {
+		return strings.HasSuffix(info.Name(), ".go") && !strings.HasSuffix(info.Name(), "_test.go")
+	}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := make(map[string][]string)
+	for _, pkg := range parsed {
+		for _, file := range pkg.Files {
+			for _, declaration := range file.Decls {
+				general, ok := declaration.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				for _, specification := range general.Specs {
+					typeSpec, ok := specification.(*ast.TypeSpec)
+					if !ok {
+						continue
+					}
+					interfaceType, ok := typeSpec.Type.(*ast.InterfaceType)
+					if !ok {
+						continue
+					}
+					for _, field := range interfaceType.Methods.List {
+						for _, name := range field.Names {
+							if name.IsExported() {
+								result[typeSpec.Name.Name] = append(result[typeSpec.Name.Name], name.Name)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return result
 }
 
 func repositoryRoot(t *testing.T) string {

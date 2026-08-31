@@ -2,22 +2,54 @@ package noncompliant
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
+	"runtime"
+	"time"
 
 	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 	"github.com/ivan-gromov-dev/gopdsdk/playdate/schedule"
 )
 
 var escapedFramebuffer []byte
+var escapedBitmapData playdate.BitmapData
+var escapedMicrophoneSamples playdate.MicrophoneSamples
+var escapedRenderBuffer []int16
 
 // analyzer-contract: device-scheduler-replacement negative
 func unboundedWork() {
+	channel := make(chan struct{})
 	go func() {}()
+	select {
+	case <-channel:
+	default:
+	}
+	_ = time.NewTimer(time.Second)
 }
 
 // analyzer-contract: device-json-replacement negative
 func reflectionJSON(data []byte) error {
 	return json.Unmarshal(data, new(any))
 }
+
+// analyzer-contract: device-fmt-replacement negative
+func unboundedFormat(value int) string { return fmt.Sprintf("%d", value) }
+
+// analyzer-contract: device-panic-profile negative
+func panicCleanup(value *int) {
+	runtime.SetFinalizer(value, func(*int) {})
+	defer func() { _ = recover() }()
+	panic("terminal on device")
+}
+
+// analyzer-contract: device-reflection-profile negative
+func dynamicFunction() reflect.Value {
+	typeOfFunction := reflect.TypeOf(func() {})
+	return reflect.MakeFunc(typeOfFunction, func([]reflect.Value) []reflect.Value { return nil })
+}
+
+// analyzer-contract: device-runtime-control-profile negative
+func controlRuntime() { runtime.LockOSThread() }
 
 // analyzer-contract: context-optional-capability negative
 // analyzer-contract: video-capability-availability negative
@@ -33,6 +65,26 @@ func retainFramebuffer(graphics playdate.FramebufferGraphics) error {
 		escapedFramebuffer, err = frame.Bytes()
 		return err
 	})
+}
+
+// analyzer-contract: bitmap-data-callback-scope negative
+func retainBitmapData(graphics playdate.BitmapDataGraphics, bitmap playdate.Bitmap) error {
+	return graphics.WithBitmapData(bitmap, func(data playdate.BitmapData) error {
+		escapedBitmapData = data
+		return nil
+	})
+}
+
+// analyzer-contract: microphone-samples-callback-scope negative
+func retainMicrophoneSamples(samples playdate.MicrophoneSamples) bool {
+	escapedMicrophoneSamples = samples
+	return true
+}
+
+// analyzer-contract: audio-render-buffer-callback-scope negative
+func retainRenderBuffer(left, _ []int16) int {
+	escapedRenderBuffer = left
+	return len(left)
 }
 
 // analyzer-contract: bitmap-owned-handle negative

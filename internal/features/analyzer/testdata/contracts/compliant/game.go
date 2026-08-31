@@ -1,6 +1,10 @@
 package compliant
 
 import (
+	"reflect"
+	"runtime"
+	"strconv"
+
 	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 	pdjson "github.com/ivan-gromov-dev/gopdsdk/playdate/json"
 	"github.com/ivan-gromov-dev/gopdsdk/playdate/schedule"
@@ -17,6 +21,23 @@ func boundedJSON(data []byte) error {
 	_, err := pdjson.DecodeBytes(data, pdjson.Limits{})
 	return err
 }
+
+// analyzer-contract: device-fmt-replacement positive
+func boundedInteger(destination []byte, value int64) []byte {
+	return strconv.AppendInt(destination, value, 10)
+}
+
+// analyzer-contract: device-panic-profile positive
+func normalReturnCleanup(close func()) { defer close() }
+
+// analyzer-contract: device-cgo-profile positive
+func publicGoSurface(context playdate.Context) uint32 { return context.CurrentTimeMilliseconds() }
+
+// analyzer-contract: device-reflection-profile positive
+func reflectedKind(value any) reflect.Kind { return reflect.TypeOf(value).Kind() }
+
+// analyzer-contract: device-runtime-control-profile positive
+func explicitGC() { runtime.GC() }
 
 // analyzer-contract: context-optional-capability positive
 // analyzer-contract: video-capability-availability positive
@@ -40,6 +61,32 @@ func copyFramebuffer(graphics playdate.FramebufferGraphics) ([]byte, error) {
 		return err
 	})
 	return copied, err
+}
+
+// analyzer-contract: bitmap-data-callback-scope positive
+func copyBitmapData(graphics playdate.BitmapDataGraphics, bitmap playdate.Bitmap) ([]byte, error) {
+	var copied []byte
+	err := graphics.WithBitmapData(bitmap, func(data playdate.BitmapData) error {
+		bytes, err := data.Bytes()
+		if err == nil {
+			copied = append(copied, bytes...)
+		}
+		return err
+	})
+	return copied, err
+}
+
+// analyzer-contract: microphone-samples-callback-scope positive
+func copyMicrophoneSamples(samples playdate.MicrophoneSamples, destination []int16) error {
+	_, err := samples.CopyTo(destination)
+	return err
+}
+
+// analyzer-contract: audio-render-buffer-callback-scope positive
+func renderSilence(left, right []int16) int {
+	clear(left)
+	clear(right)
+	return len(left)
 }
 
 // analyzer-contract: bitmap-owned-handle positive

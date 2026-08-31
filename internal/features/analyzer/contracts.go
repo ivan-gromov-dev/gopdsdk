@@ -93,12 +93,30 @@ type Contract struct {
 	Kind         ContractKind   `json:"kind"`
 	Subject      string         `json:"subject"`
 	PublicAPI    []PublicSymbol `json:"publicApi"`
+	GoSymbols    []GoSymbol     `json:"goSymbols,omitempty"`
 	Targets      []Target       `json:"targets"`
 	NormativeRef string         `json:"normativeRef"`
 	Statement    string         `json:"statement"`
 	PositiveCase string         `json:"positiveCase"`
 	NegativeCase string         `json:"negativeCase"`
 }
+
+// GoSymbol identifies a language, built-in, standard-library, or cgo surface
+// constrained by the device profile.
+type GoSymbol struct {
+	Package string       `json:"package"`
+	Name    string       `json:"name"`
+	Policy  SymbolPolicy `json:"policy"`
+}
+
+// SymbolPolicy states how a device-profile rule treats a Go surface.
+type SymbolPolicy string
+
+const (
+	SymbolAllowed     SymbolPolicy = "allowed"
+	SymbolForbidden   SymbolPolicy = "forbidden"
+	SymbolReplacement SymbolPolicy = "replacement"
+)
 
 // PublicSymbol identifies one exported declaration that supplies evidence for
 // a contract. Package is relative to the module root, such as "playdate" or
@@ -134,7 +152,7 @@ func (inventory Inventory) Validate() error {
 			return fmt.Errorf("duplicate contract id %q", contract.ID)
 		}
 		contracts[contract.ID] = struct{}{}
-		if contract.Kind == "" || contract.Subject == "" || len(contract.PublicAPI) == 0 || contract.NormativeRef == "" || contract.Statement == "" || contract.PositiveCase == "" || contract.NegativeCase == "" {
+		if contract.Kind == "" || contract.Subject == "" || len(contract.PublicAPI)+len(contract.GoSymbols) == 0 || contract.NormativeRef == "" || contract.Statement == "" || contract.PositiveCase == "" || contract.NegativeCase == "" {
 			return fmt.Errorf("contract %q is incomplete", contract.ID)
 		}
 		for _, symbol := range contract.PublicAPI {
@@ -143,6 +161,11 @@ func (inventory Inventory) Validate() error {
 			}
 			if !strings.HasPrefix(symbol.Package, "playdate") || strings.Contains(symbol.Package, "..") {
 				return fmt.Errorf("contract %q has invalid public API package %q", contract.ID, symbol.Package)
+			}
+		}
+		for _, symbol := range contract.GoSymbols {
+			if symbol.Package == "" || symbol.Name == "" || !symbol.Policy.valid() {
+				return fmt.Errorf("contract %q has incomplete Go symbol", contract.ID)
 			}
 		}
 		if !contract.Kind.valid() {
@@ -189,6 +212,10 @@ func (inventory Inventory) Validate() error {
 		return fmt.Errorf("runtime measurement limits are empty")
 	}
 	return nil
+}
+
+func (policy SymbolPolicy) valid() bool {
+	return policy == SymbolAllowed || policy == SymbolForbidden || policy == SymbolReplacement
 }
 
 func (kind ContractKind) valid() bool {

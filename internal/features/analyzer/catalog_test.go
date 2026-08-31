@@ -41,8 +41,18 @@ func TestRuleCatalogSelectsFamilyAndExplicitExperimentalRule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(device) != 2 || device[0].Family != FamilyDevice || device[1].Family != FamilyDevice {
-		t.Fatalf("device selection = %+v", device)
+	if len(device) == 0 {
+		t.Fatal("device selection is empty")
+	}
+	seenDevice := make(map[RuleID]bool)
+	for _, rule := range device {
+		if rule.Family != FamilyDevice {
+			t.Fatalf("device selection contains %+v", rule)
+		}
+		seenDevice[rule.ID] = true
+	}
+	if !seenDevice["device-goroutine"] || !seenDevice["device-encoding-json"] {
+		t.Fatalf("device selection is missing baseline rules: %+v", device)
 	}
 	performance, err := catalog.Select(RuleSelection{IDs: []RuleID{"performance-frame-allocation"}, IncludeExperimental: true})
 	if err != nil {

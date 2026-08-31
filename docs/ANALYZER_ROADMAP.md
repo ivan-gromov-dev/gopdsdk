@@ -1,6 +1,6 @@
 # Static analyzer roadmap
 
-Status: planned, implementation not started. Updated 2026-08-31.
+Status: implementation started at Step 0. Updated 2026-08-31.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -90,6 +90,12 @@ source may be diagnosed according to policy but is never edited automatically.
 ## Development plan
 
 ### Step 0 — Freeze the contract inventory
+
+In progress: `internal/features/analyzer` now defines the versioned contract
+and rule-registry models, validates stable identifiers and normative links,
+and contains an initial inventory spanning every planned contract shape. The
+full exported-API cross-check and external positive/negative fixture corpus
+remain to complete this step.
 
 Create the source-of-truth inventory from `API.md`, exported Go declarations,
 official SDK documentation, the device profile, and existing examples.

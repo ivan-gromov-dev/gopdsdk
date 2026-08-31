@@ -89,14 +89,24 @@ const (
 // Contract is a normative SDK fact that a rule may consume. PositiveCase and
 // NegativeCase are minimal intended corpus cases, not executable Go snippets.
 type Contract struct {
-	ID           string       `json:"id"`
-	Kind         ContractKind `json:"kind"`
-	Subject      string       `json:"subject"`
-	Targets      []Target     `json:"targets"`
-	NormativeRef string       `json:"normativeRef"`
-	Statement    string       `json:"statement"`
-	PositiveCase string       `json:"positiveCase"`
-	NegativeCase string       `json:"negativeCase"`
+	ID           string         `json:"id"`
+	Kind         ContractKind   `json:"kind"`
+	Subject      string         `json:"subject"`
+	PublicAPI    []PublicSymbol `json:"publicApi"`
+	Targets      []Target       `json:"targets"`
+	NormativeRef string         `json:"normativeRef"`
+	Statement    string         `json:"statement"`
+	PositiveCase string         `json:"positiveCase"`
+	NegativeCase string         `json:"negativeCase"`
+}
+
+// PublicSymbol identifies one exported declaration that supplies evidence for
+// a contract. Package is relative to the module root, such as "playdate" or
+// "playdate/schedule". Member is empty for a type or function declaration.
+type PublicSymbol struct {
+	Package string `json:"package"`
+	Name    string `json:"name"`
+	Member  string `json:"member,omitempty"`
 }
 
 // Inventory is the versioned, machine-readable analyzer contract catalog.
@@ -124,8 +134,16 @@ func (inventory Inventory) Validate() error {
 			return fmt.Errorf("duplicate contract id %q", contract.ID)
 		}
 		contracts[contract.ID] = struct{}{}
-		if contract.Kind == "" || contract.Subject == "" || contract.NormativeRef == "" || contract.Statement == "" || contract.PositiveCase == "" || contract.NegativeCase == "" {
+		if contract.Kind == "" || contract.Subject == "" || len(contract.PublicAPI) == 0 || contract.NormativeRef == "" || contract.Statement == "" || contract.PositiveCase == "" || contract.NegativeCase == "" {
 			return fmt.Errorf("contract %q is incomplete", contract.ID)
+		}
+		for _, symbol := range contract.PublicAPI {
+			if symbol.Package == "" || symbol.Name == "" {
+				return fmt.Errorf("contract %q has incomplete public API symbol", contract.ID)
+			}
+			if !strings.HasPrefix(symbol.Package, "playdate") || strings.Contains(symbol.Package, "..") {
+				return fmt.Errorf("contract %q has invalid public API package %q", contract.ID, symbol.Package)
+			}
 		}
 		if !contract.Kind.valid() {
 			return fmt.Errorf("contract %q has invalid kind %q", contract.ID, contract.Kind)
@@ -151,6 +169,9 @@ func (inventory Inventory) Validate() error {
 		}
 		if !rule.Family.valid() || !rule.Default.valid() || !rule.Confidence.valid() {
 			return fmt.Errorf("rule %q has invalid classification", rule.ID)
+		}
+		if !strings.HasPrefix(string(rule.ID), string(rule.Family)+"-") {
+			return fmt.Errorf("rule %q does not belong to family %q", rule.ID, rule.Family)
 		}
 		if err := validateTargets("rule "+string(rule.ID), rule.Targets); err != nil {
 			return err
@@ -219,6 +240,9 @@ func (inventory Inventory) JSON() ([]byte, error) {
 		return nil, err
 	}
 	copy := inventory
+	copy.Contracts = append([]Contract(nil), inventory.Contracts...)
+	copy.Rules = append([]Rule(nil), inventory.Rules...)
+	copy.RuntimeMeasurements = append([]string(nil), inventory.RuntimeMeasurements...)
 	sort.Slice(copy.Contracts, func(i, j int) bool { return copy.Contracts[i].ID < copy.Contracts[j].ID })
 	sort.Slice(copy.Rules, func(i, j int) bool { return copy.Rules[i].ID < copy.Rules[j].ID })
 	sort.Strings(copy.RuntimeMeasurements)

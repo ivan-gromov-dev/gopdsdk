@@ -92,10 +92,13 @@ source may be diagnosed according to policy but is never edited automatically.
 ### Step 0 — Freeze the contract inventory
 
 In progress: `internal/features/analyzer` now defines the versioned contract
-and rule-registry models, validates stable identifiers and normative links,
-and contains an initial inventory spanning every planned contract shape. The
-full exported-API cross-check and external positive/negative fixture corpus
-remain to complete this step.
+inventory and an immutable rule catalog with deterministic stable and
+experimental selection. It validates identifier families and normative
+document anchors, checks referenced exported declarations against the source
+tree, and supplies type-checking external positive/negative fixture packages
+spanning every planned contract shape. Expanding and reviewing the inventory
+against the complete public API and official SDK sources remains to complete
+this step.
 
 Create the source-of-truth inventory from `API.md`, exported Go declarations,
 official SDK documentation, the device profile, and existing examples.

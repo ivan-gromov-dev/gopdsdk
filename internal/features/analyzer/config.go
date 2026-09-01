@@ -20,12 +20,18 @@ const (
 // RepositoryConfig supplies repository-wide check defaults. Pointer fields
 // distinguish an omitted value from an explicit false or empty value.
 type RepositoryConfig struct {
-	Schema    string    `json:"schema"`
-	Format    *string   `json:"format,omitempty"`
-	Target    *string   `json:"target,omitempty"`
-	BuildTags *[]string `json:"buildTags,omitempty"`
-	Tests     *bool     `json:"tests,omitempty"`
-	Patterns  *[]string `json:"patterns,omitempty"`
+	Schema        string              `json:"schema"`
+	Format        *string             `json:"format,omitempty"`
+	Target        *string             `json:"target,omitempty"`
+	BuildTags     *[]string           `json:"buildTags,omitempty"`
+	Tests         *bool               `json:"tests,omitempty"`
+	Patterns      *[]string           `json:"patterns,omitempty"`
+	Profile       *AnalysisProfile    `json:"profile,omitempty"`
+	Rules         *[]RuleID           `json:"rules,omitempty"`
+	Categories    *[]RuleFamily       `json:"categories,omitempty"`
+	ExcludedRules *[]RuleID           `json:"excludeRules,omitempty"`
+	Severities    map[string]Severity `json:"severities,omitempty"`
+	FailOn        *string             `json:"failOn,omitempty"`
 }
 
 func loadRepositoryConfig(moduleRoot, requestedPath string, explicit bool) (RepositoryConfig, error) {
@@ -97,6 +103,19 @@ func (config RepositoryConfig) Validate() error {
 			if strings.TrimSpace(pattern) == "" || pattern != strings.TrimSpace(pattern) {
 				return fmt.Errorf("invalid package pattern %q", pattern)
 			}
+		}
+	}
+	if config.Profile != nil && *config.Profile != ProfileDefault && *config.Profile != ProfileExperimental && *config.Profile != ProfileDeep {
+		return fmt.Errorf("invalid profile %q", *config.Profile)
+	}
+	if config.FailOn != nil {
+		if _, err := failRank(*config.FailOn); err != nil {
+			return err
+		}
+	}
+	for selector, severity := range config.Severities {
+		if selector == "" || !severity.valid() {
+			return fmt.Errorf("invalid severity override %q=%q", selector, severity)
 		}
 	}
 	return nil

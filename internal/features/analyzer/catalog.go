@@ -10,6 +10,7 @@ import (
 type RuleSelection struct {
 	IDs                 []RuleID
 	Families            []RuleFamily
+	ExcludedIDs         []RuleID
 	IncludeExperimental bool
 }
 
@@ -55,9 +56,19 @@ func (catalog RuleCatalog) Select(selection RuleSelection) ([]Rule, error) {
 		}
 		selectedFamilies[family] = true
 	}
+	excluded := make(map[RuleID]bool, len(selection.ExcludedIDs))
+	for _, id := range selection.ExcludedIDs {
+		if _, exists := catalog.rules[id]; !exists {
+			return nil, fmt.Errorf("unknown excluded analyzer rule %q", id)
+		}
+		excluded[id] = true
+	}
 	selectAll := len(selectedIDs) == 0 && len(selectedFamilies) == 0
 	rules := make([]Rule, 0, len(catalog.rules))
 	for id, rule := range catalog.rules {
+		if excluded[id] {
+			continue
+		}
 		if !selectAll && !selectedIDs[id] && !selectedFamilies[rule.Family] {
 			continue
 		}

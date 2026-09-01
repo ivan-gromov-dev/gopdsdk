@@ -68,6 +68,13 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	target := flags.String("target", "both", "analysis target: shared, simulator, device, or both")
 	tags := flags.String("tags", "", "comma-separated Go build tags")
 	tests := flags.Bool("tests", false, "include test variants")
+	profile := flags.String("profile", "default", "rule profile: default, experimental, or deep")
+	rulesFlag := flags.String("rules", "", "comma-separated rule selection")
+	categoriesFlag := flags.String("categories", "", "comma-separated category selection")
+	excludedFlag := flags.String("exclude-rules", "", "comma-separated rules to exclude")
+	failOn := flags.String("fail-on", "warning", "exit threshold: error, warning, performance, information, or none")
+	var severityValues repeatedFlag
+	flags.Var(&severityValues, "severity", "severity override selector=severity; may be repeated")
 	if err := flags.Parse(args[1:]); err != nil {
 		return commandError(ExitConfiguration, err)
 	}
@@ -92,6 +99,32 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	if !visited["tags"] && repositoryConfig.BuildTags != nil {
 		*tags = strings.Join(*repositoryConfig.BuildTags, ",")
 	}
+	if !visited["profile"] && repositoryConfig.Profile != nil {
+		*profile = string(*repositoryConfig.Profile)
+	}
+	if !visited["rules"] && repositoryConfig.Rules != nil {
+		*rulesFlag = joinRuleIDs(*repositoryConfig.Rules)
+	}
+	if !visited["categories"] && repositoryConfig.Categories != nil {
+		*categoriesFlag = joinFamilies(*repositoryConfig.Categories)
+	}
+	if !visited["exclude-rules"] && repositoryConfig.ExcludedRules != nil {
+		*excludedFlag = joinRuleIDs(*repositoryConfig.ExcludedRules)
+	}
+	if !visited["fail-on"] && repositoryConfig.FailOn != nil {
+		*failOn = *repositoryConfig.FailOn
+	}
+	severityOverrides := make(map[string]Severity, len(repositoryConfig.Severities)+len(severityValues))
+	for selector, severity := range repositoryConfig.Severities {
+		severityOverrides[selector] = severity
+	}
+	for _, value := range severityValues {
+		selector, severity, ok := strings.Cut(value, "=")
+		if !ok || selector == "" || !Severity(severity).valid() {
+			return commandError(ExitConfiguration, fmt.Errorf("invalid severity override %q", value))
+		}
+		severityOverrides[selector] = Severity(severity)
+	}
 	if *format != "text" && *format != "json" {
 		return commandError(ExitConfiguration, fmt.Errorf("invalid check format %q", *format))
 	}
@@ -114,6 +147,12 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	if options.AnalyzerVersion == "" || options.SDKVersion == "" {
 		return commandError(ExitInternal, errors.New("check analyzer composition has no version"))
 	}
+	policy := CheckPolicy{Profile: AnalysisProfile(*profile), Rules: splitRuleIDs(commaValues(*rulesFlag)), Categories: splitFamilies(commaValues(*categoriesFlag)),
+		ExcludedRules: splitRuleIDs(commaValues(*excludedFlag)), SeverityOverrides: severityOverrides, FailOn: *failOn}
+	selection, severityByRule, err := policy.Resolve(options.Catalog)
+	if err != nil {
+		return commandError(ExitConfiguration, err)
+	}
 
 	var findings []Finding
 	var loadErrors []LoadError
@@ -128,7 +167,7 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		for _, pkg := range snapshot.Packages {
 			loadErrors = append(loadErrors, pkg.Errors...)
 		}
-		result, err := options.Registry.Run(ctx, snapshot, RuleSelection{})
+		result, err := options.Registry.Run(ctx, snapshot, selection)
 		if err != nil {
 			return classifyCheckError(err, ExitInternal)
 		}
@@ -152,6 +191,7 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	if err != nil {
 		return commandError(ExitInternal, err)
 	}
+	applySeverity(&report, severityByRule)
 	if *format == "json" {
 		data, err := report.JSON()
 		if err == nil {
@@ -163,10 +203,41 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	} else if err := writeTextReport(stdout, report); err != nil {
 		return commandError(ExitInternal, err)
 	}
-	if len(findings) != 0 {
+	if reportFails(report, *failOn) {
 		return commandError(ExitFindings, fmt.Errorf("found %d diagnostic(s)", len(findings)))
 	}
 	return nil
+}
+
+type repeatedFlag []string
+
+func (values *repeatedFlag) String() string         { return strings.Join(*values, ",") }
+func (values *repeatedFlag) Set(value string) error { *values = append(*values, value); return nil }
+
+func commaValues(value string) []string {
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	for index := range parts {
+		parts[index] = strings.TrimSpace(parts[index])
+	}
+	return parts
+}
+
+func joinRuleIDs(values []RuleID) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = string(value)
+	}
+	return strings.Join(parts, ",")
+}
+func joinFamilies(values []RuleFamily) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = string(value)
+	}
+	return strings.Join(parts, ",")
 }
 
 func uniqueLoadErrors(source []LoadError) []LoadError {

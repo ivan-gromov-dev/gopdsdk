@@ -199,14 +199,18 @@ set.
 
 In progress: `gopdsdk check` now routes through the analyzer feature and loads
 explicit package patterns for shared, Simulator, device, or both runtime
-targets. Its initial frozen flags are `--config`, `--format text|json`,
-`--target shared|simulator|device|both`, `--tags`, and `--tests`; package
+targets. Its frozen flags currently include `--config`, `--format text|json`,
+`--target shared|simulator|device|both`, `--tags`, `--tests`,
+`--profile default|experimental|deep`, `--rules`, `--categories`,
+`--exclude-rules`, repeatable `--severity selector=severity`, and
+`--fail-on error|warning|performance|information|none`; package
 patterns are positional and default to `./...`. Text and structured output are
 implemented and independently tested. The kernel preserves deterministic
 related ranges and atomic suggested-edit groups. Repository defaults are read
 from `.gopdsdk-check.json`, or from the explicit `--config` path, using schema
 `gopdsdk-check-config/v1`. The configuration may set `format`, `target`,
-`buildTags`, `tests`, and `patterns`; explicit CLI flags and positional patterns
+`buildTags`, `tests`, `patterns`, `profile`, `rules`, `categories`,
+`excludeRules`, `severities`, and `failOn`; explicit CLI flags and positional patterns
 take precedence, followed by repository values and then built-in defaults.
 Unknown schemas, fields, invalid values, duplicate JSON documents, and a
 missing explicitly named file are configuration errors. A missing implicit
@@ -225,9 +229,13 @@ for package load/type failure, `4` for an internal analyzer or output failure,
 and `130` for cancellation. A report is written before exit `1`; reporting is
 therefore separate from process status. External-consumer coverage exercises a
 clean structured run, invalid format, malformed repository configuration, and
-package load failure. Rule selection and severity thresholds, suppressions,
-baselines, changed-file filtering, and cancellation through a spawned external
-process remain outstanding.
+package load failure. Stable rules comprise the default profile; experimental
+and deep profiles opt into experimental rules, while deep is reserved for the
+later bounded interprocedural implementations. Category severity applies
+before a more specific rule severity. The default failure threshold is
+`warning`; lower-severity diagnostics remain in output without changing the
+process status. Suppressions, baselines, changed-file filtering, and
+cancellation through a spawned external process remain outstanding.
 
 Deliverables:
 

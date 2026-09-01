@@ -107,6 +107,14 @@ func TestRunCheckRepositoryConfigurationAndCLIOverride(t *testing.T) {
 	if err := RunCheck(context.Background(), []string{"check", "--target", "shared", "--format", "text"}, &overridden, &bytes.Buffer{}, options); err != nil || overridden.String() != "No findings.\n" {
 		t.Fatalf("CLI override = %v, %q", err, overridden.String())
 	}
+	var belowThreshold bytes.Buffer
+	if err := RunCheck(context.Background(), []string{"check", "--target", "device", "--format", "text", "--severity", "workspace=information", "--fail-on", "warning"}, &belowThreshold, &bytes.Buffer{}, options); err != nil || !strings.Contains(belowThreshold.String(), "information workspace-protocol-synthetic") {
+		t.Fatalf("below-threshold report = %v, %q", err, belowThreshold.String())
+	}
+	var excluded bytes.Buffer
+	if err := RunCheck(context.Background(), []string{"check", "--target", "device", "--format", "text", "--exclude-rules", "workspace-protocol-synthetic"}, &excluded, &bytes.Buffer{}, options); err != nil || excluded.String() != "No findings.\n" {
+		t.Fatalf("excluded rule = %v, %q", err, excluded.String())
+	}
 }
 
 func checkFixture(t *testing.T, source string) string {

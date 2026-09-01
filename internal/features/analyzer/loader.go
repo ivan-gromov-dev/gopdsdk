@@ -71,6 +71,7 @@ type Snapshot struct {
 	Target     Target
 	Packages   []Package
 	Loaded     []*packages.Package
+	overlay    map[string][]byte
 }
 
 // LoadPackages loads syntax and type information without mutating the target
@@ -116,7 +117,7 @@ func LoadPackages(ctx context.Context, config LoadConfig) (Snapshot, error) {
 		return Snapshot{}, contextErr
 	}
 	sort.Slice(loaded, func(i, j int) bool { return loaded[i].ID < loaded[j].ID })
-	snapshot := Snapshot{ModuleRoot: filepath.ToSlash(root), Target: config.Target, Loaded: loaded}
+	snapshot := Snapshot{ModuleRoot: filepath.ToSlash(root), Target: config.Target, Loaded: loaded, overlay: overlay}
 	for _, loadedPackage := range loaded {
 		snapshot.Packages = append(snapshot.Packages, normalizePackage(root, config.Target, overlay, loadedPackage))
 	}

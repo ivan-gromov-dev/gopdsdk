@@ -138,9 +138,14 @@ behavior.
 In progress: the kernel loads an explicit external module through
 `golang.org/x/tools/go/packages` with package patterns, build tags, tests,
 overlays, target identity, read-only module mode, and context cancellation. It
-normalizes deterministic package, file, role, and partial load-error models.
-Registry execution, shared control-flow/SSA/fact providers, and broader
-classification remain to complete this step.
+normalizes deterministic package, file, role, and partial load-error models. A
+validated registry now runs selected `go/analysis.Analyzer` implementations and
+their prerequisite graphs once per package, collects deterministic normalized
+diagnostics, preserves overlays, separates execution failures from package load
+errors, and supports cancellation around parallel package execution. Shared
+control-flow/SSA/fact providers, broader classification, and cancellation of an
+analyzer implementation while its `Run` function is active remain to complete
+this step.
 
 Introduce the analyzer feature without reporting SDK diagnostics yet.
 

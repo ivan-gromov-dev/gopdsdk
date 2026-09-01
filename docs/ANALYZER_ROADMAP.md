@@ -1,6 +1,6 @@
 # Static analyzer roadmap
 
-Status: Steps 0–1 complete; Step 2 is next. Updated 2026-09-01.
+Status: Steps 0–1 complete; Step 2 is in progress. Updated 2026-09-01.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -196,6 +196,90 @@ aware, and does not mutate the analyzed workspace.
 
 Make the analyzer usable as stable infrastructure before adding a large rule
 set.
+
+In progress: `gopdsdk check` now routes through the analyzer feature and loads
+explicit package patterns for shared, Simulator, device, or both runtime
+targets. Its frozen flags currently include `--config`, `--format text|json`,
+`--target shared|simulator|device|both`, `--tags`, `--tests`,
+`--profile default|experimental|deep`, `--rules`, `--categories`,
+`--exclude-rules`, repeatable `--severity selector=severity`, and
+`--fail-on error|warning|performance|information|none`, `--baseline`,
+`--generated exclude|include`, and repeatable `--changed-file`; package
+patterns are positional and default to `./...`. Text and structured output are
+implemented and independently tested. The kernel preserves deterministic
+related ranges and atomic suggested-edit groups. Repository defaults are read
+from `.gopdsdk-check.json`, or from the explicit `--config` path, using schema
+`gopdsdk-check-config/v1`. The configuration may set `format`, `target`,
+`buildTags`, `tests`, `patterns`, `profile`, `rules`, `categories`,
+`excludeRules`, `severities`, `failOn`, `baseline`, `generated`, and
+`changedFiles`; explicit CLI flags and positional patterns
+take precedence, followed by repository values and then built-in defaults.
+Unknown schemas, fields, invalid values, duplicate JSON documents, and a
+missing explicitly named file are configuration errors. A missing implicit
+configuration is valid.
+
+The first structured protocol schema defines
+versioned reports with analyzer and SDK versions, rule classification, target,
+primary and related ranges, documentation, suppression metadata, and safe edit
+groups. Its decoder accepts unknown fields within the v1 schema for forward
+compatibility and rejects unknown schema versions. Unit coverage includes a
+test-only synthetic rule that exercises every protocol field.
+
+The command exit contract is `0` for a successful run without threshold-level
+findings, `1` for findings, `2` for invalid invocation or configuration, `3`
+for package load/type failure, `4` for an internal analyzer or output failure,
+and `130` for cancellation. A report is written before exit `1`; reporting is
+therefore separate from process status. External-consumer coverage exercises a
+clean structured run, invalid format, malformed repository configuration, and
+package load failure. A separate test-only external driver exercises finding,
+internal analyzer failure, and cooperative cancellation process exits without
+adding injection hooks to the production command. Stable rules comprise the default profile; experimental
+and deep profiles opt into experimental rules, while deep is reserved for the
+later bounded interprocedural implementations. Category severity applies
+before a more specific rule severity. The default failure threshold is
+`warning`; lower-severity diagnostics remain in output without changing the
+process status.
+
+Inline suppression is now implemented with the exact Go comment grammar
+`//gopdsdk:ignore rule-id -- non-empty reason`. A standalone directive applies
+to the immediately following line; a directive following code applies to that
+same line. Directives are parsed as Go comments rather than raw text, so string
+literals cannot suppress findings. Unknown rules, non-suppressible rules,
+missing reasons, and malformed directives are configuration errors. Suppressed
+diagnostics remain present in text and structured output with `kind: inline`
+and their reason, but never contribute to the failure threshold.
+
+Adoption baselines use schema `gopdsdk-check-baseline/v1`. Every entry names
+the exact rule, target, module-relative slash path, one-based line and column,
+diagnostic message, and a non-empty reason. Matching entries remain visible in
+the report with `kind: baseline` and do not contribute to the failure
+threshold. Unknown or non-suppressible rules, unsafe or non-canonical paths,
+incomplete or duplicate identities, and unknown fields are configuration
+errors. Every entry must match at least one finding across all selected targets;
+otherwise the run fails with deterministic stale-entry locations. Baselines
+are read-only in Step 2; no command rewrites the analyzed workspace.
+
+Generated sources are analyzed with their package so rules retain complete
+type and control-flow context. They are excluded from reporting by default and
+may be included with `generated: include` or `--generated include`; suggested
+edits are always removed from generated-source diagnostics. Changed-file
+filtering likewise analyzes complete packages but reports only findings whose
+primary module-relative path was supplied by `changedFiles` or repeatable
+`--changed-file`. Paths must be canonical module-relative slash paths. During
+a changed-file run, baseline entries outside that path set are outside the run
+scope and therefore do not become stale.
+
+Unused inline directives now fail as stale when their rule, target, generated
+policy, and changed-file path are all active. Directives outside the reporting
+scope remain valid and are reconsidered by a later full run. Checked-in golden
+fixtures freeze the complete human-readable and v1 structured records,
+including related ranges, suppression metadata, and edit groups. Command-level
+unit coverage distinguishes analyzer and output failures as exit `4`.
+Test-only external-process coverage verifies synthetic findings, internal
+analyzer failure, and cooperative cancellation with exits `1`, `4`, and `130`.
+The existing native Windows, macOS, and Linux CI matrix runs the checked-in
+goldens through `go test ./...`; Windows passes locally, while current macOS
+and Linux results remain a CI evidence gate rather than local evidence.
 
 Deliverables:
 

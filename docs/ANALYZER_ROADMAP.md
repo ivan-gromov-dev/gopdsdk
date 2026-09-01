@@ -1,6 +1,6 @@
 # Static analyzer roadmap
 
-Status: implementation active in Steps 0–1. Updated 2026-08-31.
+Status: implementation active in Step 0; Step 1 complete. Updated 2026-09-01.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -135,7 +135,7 @@ behavior.
 
 ### Step 1 — Build the analyzer kernel
 
-In progress: the kernel loads an explicit external module through
+Complete: the kernel loads an explicit external module through
 `golang.org/x/tools/go/packages` with package patterns, build tags, tests,
 overlays, target identity, read-only module mode, and context cancellation. It
 normalizes deterministic package, file, role, and partial load-error models. A
@@ -149,8 +149,13 @@ control-flow, and SSA providers. Source roles now distinguish production, test,
 example, generated, vendored, dependency, host-only, Simulator, device, and
 shared inputs. Host-only classification uses Go platform, architecture,
 compiler, cgo, and filename constraints without assigning analyzer-specific
-meaning to application build tags. Cancellation of an analyzer implementation
-while its `Run` function is active remains to complete this step.
+meaning to application build tags. Analyzer implementations receive their
+request context through `PassContext` and can stop cooperatively while their
+`Run` function is active; the pass association is removed after execution.
+
+The Windows unit suite, full repository tests, analyzer race test, and
+`go vet ./...` pass on 2026-09-01. This is analyzer-kernel evidence only; no SDK
+build, Simulator launch, USB deployment, or physical-device behavior is implied.
 
 Introduce the analyzer feature without reporting SDK diagnostics yet.
 

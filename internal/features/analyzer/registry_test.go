@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -100,6 +101,42 @@ func TestRegistrySeparatesExecutionFailureAndCancellation(t *testing.T) {
 	cancel()
 	if _, err := registry.Run(ctx, snapshot, RuleSelection{}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled Run() = %v", err)
+	}
+}
+
+func TestRegistryCancelsCooperativeAnalyzerRun(t *testing.T) {
+	snapshot := loadRegistryFixture(t)
+	started := make(chan struct{})
+	var captured *analysis.Pass
+	implementation := &analysis.Analyzer{Name: "cancellable", Doc: "wait for cancellation", Run: func(pass *analysis.Pass) (any, error) {
+		captured = pass
+		close(started)
+		<-PassContext(pass).Done()
+		return nil, PassContext(pass).Err()
+	}}
+	registry := newTestRegistry(t, Registration{RuleID: "device-goroutine", Analyzer: implementation})
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		_, err := registry.Run(ctx, snapshot, RuleSelection{IDs: []RuleID{"device-goroutine"}})
+		result <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("analyzer did not start")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Run() = %v, want cancellation", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("cooperative analyzer did not stop")
+	}
+	if PassContext(captured).Done() != nil {
+		t.Fatal("pass context remained attached after Run")
 	}
 }
 

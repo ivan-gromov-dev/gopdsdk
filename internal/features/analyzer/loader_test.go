@@ -110,6 +110,25 @@ func TestLoadPackagesReturnsPartialPackageForOverlaySyntaxError(t *testing.T) {
 	}
 }
 
+func TestLoadPackagesClassifiesOverlayTypeError(t *testing.T) {
+	snapshot, err := LoadPackages(context.Background(), LoadConfig{
+		ModuleRoot: contractFixtureRoot(), Patterns: []string{"./compliant"}, Target: TargetDevice,
+		Overlay: map[string][]byte{"compliant/game.go": []byte("package compliant\nvar invalid int = \"text\"\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Packages) != 1 || !snapshot.Packages[0].Partial {
+		t.Fatalf("partial snapshot = %+v", snapshot.Packages)
+	}
+	for _, loadError := range snapshot.Packages[0].Errors {
+		if loadError.Kind == "type" {
+			return
+		}
+	}
+	t.Fatalf("snapshot has no type error: %+v", snapshot.Packages[0].Errors)
+}
+
 func TestLoadPackagesStopsForCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

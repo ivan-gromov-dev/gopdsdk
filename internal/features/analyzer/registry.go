@@ -272,9 +272,11 @@ func (executor *executor) run(analyzer *analysis.Analyzer, loaded *packages.Pack
 		Pkg: loaded.Types, TypesInfo: loaded.TypesInfo, TypesSizes: loaded.TypesSizes, ResultOf: inputs, TypeErrors: loaded.TypeErrors,
 		Module: analysisModule(loaded.Module), ReadFile: executor.snapshot.readFile}
 	pass.Report = func(diagnostic analysis.Diagnostic) { out.diagnostics = append(out.diagnostics, diagnostic) }
+	attachPassContext(pass, executor.ctx)
 	executor.facts.attach(pass)
 	defer func() {
 		executor.facts.finish(pass)
+		detachPassContext(pass)
 		if recovered := recover(); recovered != nil {
 			out.err = fmt.Errorf("panic: %v", recovered)
 		}

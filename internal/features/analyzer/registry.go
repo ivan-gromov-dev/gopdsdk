@@ -42,6 +42,29 @@ type Finding struct {
 	Category  string
 	Message   string
 	URL       string
+	Related   []RelatedFinding
+	Fixes     []FindingFix
+}
+
+// RelatedFinding adds a secondary source range to a finding.
+type RelatedFinding struct {
+	Position string
+	End      string
+	Message  string
+}
+
+// FindingFix is one analyzer-provided edit group. Consumers must apply every
+// edit in a group together.
+type FindingFix struct {
+	Message string
+	Edits   []FindingEdit
+}
+
+// FindingEdit replaces one normalized source range with NewText.
+type FindingEdit struct {
+	Position string
+	End      string
+	NewText  string
 }
 
 // RunResult contains findings in deterministic rule, package, and source order.
@@ -438,9 +461,47 @@ func (snapshot Snapshot) readFile(name string) ([]byte, error) {
 func normalizeDiagnostic(snapshot Snapshot, loaded *packages.Package, ruleID RuleID, analyzerName string, diagnostic analysis.Diagnostic) Finding {
 	position := loaded.Fset.PositionFor(diagnostic.Pos, true)
 	end := loaded.Fset.PositionFor(diagnostic.End, true)
-	return Finding{RuleID: ruleID, Analyzer: analyzerName, PackageID: loaded.ID, Target: snapshot.Target,
+	finding := Finding{RuleID: ruleID, Analyzer: analyzerName, PackageID: loaded.ID, Target: snapshot.Target,
 		Position: normalizeTokenPosition(snapshot.ModuleRoot, position), End: normalizeTokenPosition(snapshot.ModuleRoot, end),
 		Category: diagnostic.Category, Message: diagnostic.Message, URL: diagnostic.URL}
+	for _, related := range diagnostic.Related {
+		finding.Related = append(finding.Related, RelatedFinding{
+			Position: normalizeTokenPosition(snapshot.ModuleRoot, loaded.Fset.PositionFor(related.Pos, true)),
+			End:      normalizeTokenPosition(snapshot.ModuleRoot, loaded.Fset.PositionFor(related.End, true)),
+			Message:  related.Message,
+		})
+	}
+	for _, fix := range diagnostic.SuggestedFixes {
+		normalized := FindingFix{Message: fix.Message}
+		for _, edit := range fix.TextEdits {
+			normalized.Edits = append(normalized.Edits, FindingEdit{
+				Position: normalizeTokenPosition(snapshot.ModuleRoot, loaded.Fset.PositionFor(edit.Pos, true)),
+				End:      normalizeTokenPosition(snapshot.ModuleRoot, loaded.Fset.PositionFor(edit.End, true)),
+				NewText:  string(edit.NewText),
+			})
+		}
+		sort.Slice(normalized.Edits, func(i, j int) bool {
+			if normalized.Edits[i].Position != normalized.Edits[j].Position {
+				return normalized.Edits[i].Position < normalized.Edits[j].Position
+			}
+			if normalized.Edits[i].End != normalized.Edits[j].End {
+				return normalized.Edits[i].End < normalized.Edits[j].End
+			}
+			return normalized.Edits[i].NewText < normalized.Edits[j].NewText
+		})
+		finding.Fixes = append(finding.Fixes, normalized)
+	}
+	sort.Slice(finding.Related, func(i, j int) bool {
+		if finding.Related[i].Position != finding.Related[j].Position {
+			return finding.Related[i].Position < finding.Related[j].Position
+		}
+		if finding.Related[i].End != finding.Related[j].End {
+			return finding.Related[i].End < finding.Related[j].End
+		}
+		return finding.Related[i].Message < finding.Related[j].Message
+	})
+	sort.Slice(finding.Fixes, func(i, j int) bool { return finding.Fixes[i].Message < finding.Fixes[j].Message })
+	return finding
 }
 
 func normalizeTokenPosition(root string, position token.Position) string {

@@ -1,6 +1,6 @@
 # Static analyzer roadmap
 
-Status: Steps 0–1 complete; Step 2 is next. Updated 2026-09-01.
+Status: Steps 0–1 complete; Step 2 is in progress. Updated 2026-09-01.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -196,6 +196,16 @@ aware, and does not mutate the analyzed workspace.
 
 Make the analyzer usable as stable infrastructure before adding a large rule
 set.
+
+In progress: the kernel now preserves deterministic related ranges and
+atomic suggested-edit groups. The first structured protocol schema defines
+versioned reports with analyzer and SDK versions, rule classification, target,
+primary and related ranges, documentation, suppression metadata, and safe edit
+groups. Its decoder accepts unknown fields within the v1 schema for forward
+compatibility and rejects unknown schema versions. Unit coverage includes a
+test-only synthetic rule that exercises every protocol field. Command routing,
+configuration, suppressions, baselines, text output, and external-consumer CLI
+evidence remain outstanding.
 
 Deliverables:
 

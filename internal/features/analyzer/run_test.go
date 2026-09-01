@@ -82,6 +82,33 @@ func TestRunCheckCleanConfigurationLoadAndCancellationExits(t *testing.T) {
 	}
 }
 
+func TestRunCheckRepositoryConfigurationAndCLIOverride(t *testing.T) {
+	root := checkFixture(t, "package game\nfunc bad() {}\n")
+	writeCheckConfig(t, root, `{"schema":"gopdsdk-check-config/v1","format":"json","target":"device","patterns":["./..."]}`)
+	catalog := syntheticProtocolCatalog(t)
+	implementation := &analysis.Analyzer{Name: "protocolsynthetic", Doc: "exercise configured check", Run: func(pass *analysis.Pass) (any, error) {
+		function := pass.Files[0].Decls[0].(*ast.FuncDecl)
+		pass.Reportf(function.Name.Pos(), "configured finding")
+		return nil, nil
+	}}
+	registry, err := NewRegistry(catalog, Registration{RuleID: "workspace-protocol-synthetic", Analyzer: implementation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := CheckOptions{Catalog: catalog, Registry: registry, AnalyzerVersion: "v1", SDKVersion: "v1.0.0", ModuleRoot: root}
+
+	var configured bytes.Buffer
+	err = RunCheck(context.Background(), []string{"check"}, &configured, &bytes.Buffer{}, options)
+	var commandErr *CommandError
+	if !errors.As(err, &commandErr) || commandErr.Code != ExitFindings || !strings.Contains(configured.String(), `"target": "device"`) {
+		t.Fatalf("configured run = %v\n%s", err, configured.String())
+	}
+	var overridden bytes.Buffer
+	if err := RunCheck(context.Background(), []string{"check", "--target", "shared", "--format", "text"}, &overridden, &bytes.Buffer{}, options); err != nil || overridden.String() != "No findings.\n" {
+		t.Fatalf("CLI override = %v, %q", err, overridden.String())
+	}
+}
+
 func checkFixture(t *testing.T, source string) string {
 	t.Helper()
 	root := t.TempDir()

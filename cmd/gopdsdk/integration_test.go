@@ -39,6 +39,14 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 		t.Fatalf("clean check JSON is incomplete:\n%s", checkJSON)
 	}
 	assertExitCode(t, project, binary, 2, "check", "--format", "xml")
+	configPath := filepath.Join(project, ".gopdsdk-check.json")
+	if err := os.WriteFile(configPath, []byte(`{"schema":"gopdsdk-check-config/v1","unknown":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertExitCode(t, project, binary, 2, "check")
+	if err := os.Remove(configPath); err != nil {
+		t.Fatal(err)
+	}
 	brokenPath := filepath.Join(project, "broken.go")
 	if err := os.WriteFile(brokenPath, []byte("package game\nfunc broken(\n"), 0o644); err != nil {
 		t.Fatal(err)

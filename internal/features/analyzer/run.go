@@ -63,12 +63,34 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	}
 	flags := flag.NewFlagSet("gopdsdk check", flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	configPath := flags.String("config", "", "path to repository check configuration")
 	format := flags.String("format", "text", "output format: text or json")
 	target := flags.String("target", "both", "analysis target: shared, simulator, device, or both")
 	tags := flags.String("tags", "", "comma-separated Go build tags")
 	tests := flags.Bool("tests", false, "include test variants")
 	if err := flags.Parse(args[1:]); err != nil {
 		return commandError(ExitConfiguration, err)
+	}
+	if options.ModuleRoot == "" {
+		options.ModuleRoot = "."
+	}
+	visited := make(map[string]bool)
+	flags.Visit(func(value *flag.Flag) { visited[value.Name] = true })
+	repositoryConfig, err := loadRepositoryConfig(options.ModuleRoot, *configPath, visited["config"])
+	if err != nil {
+		return commandError(ExitConfiguration, err)
+	}
+	if !visited["format"] && repositoryConfig.Format != nil {
+		*format = *repositoryConfig.Format
+	}
+	if !visited["target"] && repositoryConfig.Target != nil {
+		*target = *repositoryConfig.Target
+	}
+	if !visited["tests"] && repositoryConfig.Tests != nil {
+		*tests = *repositoryConfig.Tests
+	}
+	if !visited["tags"] && repositoryConfig.BuildTags != nil {
+		*tags = strings.Join(*repositoryConfig.BuildTags, ",")
 	}
 	if *format != "text" && *format != "json" {
 		return commandError(ExitConfiguration, fmt.Errorf("invalid check format %q", *format))
@@ -79,7 +101,11 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	}
 	patterns := flags.Args()
 	if len(patterns) == 0 {
-		patterns = []string{"./..."}
+		if repositoryConfig.Patterns != nil {
+			patterns = append([]string(nil), (*repositoryConfig.Patterns)...)
+		} else {
+			patterns = []string{"./..."}
+		}
 	}
 	buildTags, err := checkBuildTags(*tags)
 	if err != nil {
@@ -87,9 +113,6 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	}
 	if options.AnalyzerVersion == "" || options.SDKVersion == "" {
 		return commandError(ExitInternal, errors.New("check analyzer composition has no version"))
-	}
-	if options.ModuleRoot == "" {
-		options.ModuleRoot = "."
 	}
 
 	var findings []Finding
@@ -180,23 +203,10 @@ func checkBuildTags(value string) ([]string, error) {
 		return nil, nil
 	}
 	parts := strings.Split(value, ",")
-	seen := make(map[string]bool, len(parts))
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			return nil, errors.New("check build tags contain an empty name")
-		}
-		if strings.ContainsAny(part, " \t\r\n") {
-			return nil, fmt.Errorf("invalid check build tag %q", part)
-		}
-		if !seen[part] {
-			seen[part] = true
-			result = append(result, part)
-		}
+	for index := range parts {
+		parts[index] = strings.TrimSpace(parts[index])
 	}
-	sort.Strings(result)
-	return result, nil
+	return normalizeBuildTags(parts)
 }
 
 func writeTextReport(out io.Writer, report Report) error {

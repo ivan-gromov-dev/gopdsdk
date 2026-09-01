@@ -308,6 +308,20 @@ without depending on human-readable output.
 
 Implement fast, high-confidence syntax, type, and import rules.
 
+In progress: the production registry now implements the initial eleven stable
+device rules for goroutines, channel syntax and operations, `select`, runtime
+`time` symbols while preserving pure `time.Duration` operations, `fmt`,
+`encoding/json`, `recover`, finalizers, application cgo imports, reflection
+outside the audited subset, and the documented unavailable runtime-control
+hooks. Symbol rules diagnose references as well as direct calls, so assigning
+an unavailable function value cannot evade the check. Command-level Windows
+fixtures cover generated-source inclusion, build tags, test variants, inline
+suppression, and combined Simulator/device target selection. The maintained
+examples produce no default device findings. This is local unit and
+external-consumer CLI evidence only; native macOS/Linux CI, transitive reachable
+paths, the remaining source/toolchain compatibility rules, and device-build
+linker comparisons remain open.
+
 Rule scope:
 
 - `go` statements, channels, channel operations and types, and `select`;

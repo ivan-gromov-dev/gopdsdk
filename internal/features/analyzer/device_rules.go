@@ -25,7 +25,7 @@ func deviceRuleRegistrations() []Registration {
 				pass.Reportf(statement.Select, "select is unavailable on device; use bounded deterministic scheduling")
 			}
 		})},
-		{RuleID: "device-time-runtime", Analyzer: callRule("devicetimeruntime", providers, reportTimeCall)},
+		{RuleID: "device-time-runtime", Analyzer: syntaxRule("devicetimeruntime", providers, reportTimeUse)},
 		{RuleID: "device-encoding-json", Analyzer: importRule("deviceencodingjson", providers, "encoding/json", "encoding/json is unavailable on device; use playdate/json")},
 		{RuleID: "device-fmt", Analyzer: importRule("devicefmt", providers, "fmt", "fmt is unavailable on device; use strconv and bounded writers")},
 		{RuleID: "device-recover", Analyzer: callRule("devicerecover", providers, func(pass *analysis.Pass, call *ast.CallExpr) {
@@ -33,14 +33,14 @@ func deviceRuleRegistrations() []Registration {
 				pass.Reportf(call.Fun.Pos(), "recover cannot recover a device panic")
 			}
 		})},
-		{RuleID: "device-finalizer", Analyzer: callRule("devicefinalizer", providers, func(pass *analysis.Pass, call *ast.CallExpr) {
-			if objectName(pass, call.Fun, "runtime", "SetFinalizer") {
-				pass.Reportf(call.Fun.Pos(), "runtime.SetFinalizer is unavailable on device; use explicit ownership")
+		{RuleID: "device-finalizer", Analyzer: syntaxRule("devicefinalizer", providers, func(pass *analysis.Pass, node ast.Node) {
+			if selector, ok := node.(*ast.SelectorExpr); ok && objectName(pass, selector, "runtime", "SetFinalizer") {
+				pass.Reportf(selector.Pos(), "runtime.SetFinalizer is unavailable on device; use explicit ownership")
 			}
 		})},
 		{RuleID: "device-cgo", Analyzer: importRule("devicecgo", providers, "C", "application cgo is unavailable on device")},
-		{RuleID: "device-reflect-symbol", Analyzer: callRule("devicereflectsymbol", providers, reportReflectCall)},
-		{RuleID: "device-runtime-control", Analyzer: callRule("deviceruntimecontrol", providers, reportRuntimeControlCall)},
+		{RuleID: "device-reflect-symbol", Analyzer: syntaxRule("devicereflectsymbol", providers, reportReflectUse)},
+		{RuleID: "device-runtime-control", Analyzer: syntaxRule("deviceruntimecontrol", providers, reportRuntimeControlUse)},
 	}
 }
 
@@ -91,22 +91,31 @@ func reportChannel(pass *analysis.Pass, node ast.Node) {
 		if objectName(pass, value.Fun, "builtin", "close") && len(value.Args) == 1 && isChannel(pass.TypesInfo.TypeOf(value.Args[0])) {
 			pass.Reportf(value.Fun.Pos(), "channel operations are unavailable on device; use playdate/schedule")
 		}
+	case *ast.RangeStmt:
+		if isChannel(pass.TypesInfo.TypeOf(value.X)) {
+			pass.Reportf(value.For, "ranging over channels is unavailable on device; use playdate/schedule")
+		}
 	}
 }
 
-func reportTimeCall(pass *analysis.Pass, call *ast.CallExpr) {
-	object := calledObject(pass, call.Fun)
+func reportTimeUse(pass *analysis.Pass, node ast.Node) {
+	selector, ok := node.(*ast.SelectorExpr)
+	if !ok {
+		return
+	}
+	object := pass.TypesInfo.ObjectOf(selector.Sel)
 	if object == nil || object.Pkg() == nil || object.Pkg().Path() != "time" {
 		return
 	}
-	if allowedTimeCall(object) {
+	if allowedTimeSymbol(object) {
 		return
 	}
-	pass.Reportf(call.Fun.Pos(), "time.%s uses clocks or runtime scheduling unavailable on device; use playdate/schedule", object.Name())
+	pass.Reportf(selector.Pos(), "time.%s uses clocks or runtime scheduling unavailable on device; use playdate/schedule", object.Name())
 }
 
-func allowedTimeCall(object types.Object) bool {
-	if object.Name() == "ParseDuration" {
+func allowedTimeSymbol(object types.Object) bool {
+	switch object.Name() {
+	case "Duration", "ParseDuration", "Nanosecond", "Microsecond", "Millisecond", "Second", "Minute", "Hour":
 		return true
 	}
 	function, ok := object.(*types.Func)
@@ -121,12 +130,16 @@ func allowedTimeCall(object types.Object) bool {
 	}
 }
 
-func reportReflectCall(pass *analysis.Pass, call *ast.CallExpr) {
-	object := calledObject(pass, call.Fun)
+func reportReflectUse(pass *analysis.Pass, node ast.Node) {
+	selector, ok := node.(*ast.SelectorExpr)
+	if !ok {
+		return
+	}
+	object := pass.TypesInfo.ObjectOf(selector.Sel)
 	if object == nil || object.Pkg() == nil || object.Pkg().Path() != "reflect" || allowedReflectCall(object) {
 		return
 	}
-	pass.Reportf(call.Fun.Pos(), "reflect.%s is outside the audited device reflection subset", object.Name())
+	pass.Reportf(selector.Pos(), "reflect.%s is outside the audited device reflection subset", object.Name())
 }
 
 func allowedReflectCall(object types.Object) bool {
@@ -150,8 +163,12 @@ func allowedReflectCall(object types.Object) bool {
 	}
 }
 
-func reportRuntimeControlCall(pass *analysis.Pass, call *ast.CallExpr) {
-	object := calledObject(pass, call.Fun)
+func reportRuntimeControlUse(pass *analysis.Pass, node ast.Node) {
+	selector, ok := node.(*ast.SelectorExpr)
+	if !ok {
+		return
+	}
+	object := pass.TypesInfo.ObjectOf(selector.Sel)
 	if object == nil || object.Pkg() == nil || object.Pkg().Path() != "runtime" {
 		return
 	}
@@ -160,7 +177,7 @@ func reportRuntimeControlCall(pass *analysis.Pass, call *ast.CallExpr) {
 	default:
 		return
 	}
-	pass.Reportf(call.Fun.Pos(), "runtime.%s is an application runtime-control hook unavailable on device", object.Name())
+	pass.Reportf(selector.Pos(), "runtime.%s is an application runtime-control hook unavailable on device", object.Name())
 }
 
 func calledObject(pass *analysis.Pass, expression ast.Expr) types.Object {

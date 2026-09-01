@@ -9,6 +9,12 @@ requires an explicitly documented exception.
 
 - Changed the canonical module, import, documentation, release, and repository
   paths to `github.com/ivan-gromov-dev/gopdsdk` after the GitHub account rename.
+- Began the first production static-analyzer device rule pack. `gopdsdk check`
+  now reports the initial stable syntax, import, and typed-symbol violations for
+  goroutines, channels, `select`, clock and scheduling APIs, `fmt`,
+  `encoding/json`, panic recovery and finalizers, application cgo, unsupported
+  reflection, and runtime-control hooks while accepting the documented
+  `time.Duration` and reflection subsets.
 
 ## v1.0.0 (2026-08-18)
 

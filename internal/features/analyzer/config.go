@@ -33,6 +33,8 @@ type RepositoryConfig struct {
 	Severities    map[string]Severity `json:"severities,omitempty"`
 	FailOn        *string             `json:"failOn,omitempty"`
 	Baseline      *string             `json:"baseline,omitempty"`
+	Generated     *GeneratedPolicy    `json:"generated,omitempty"`
+	ChangedFiles  *[]string           `json:"changedFiles,omitempty"`
 }
 
 func loadRepositoryConfig(moduleRoot, requestedPath string, explicit bool) (RepositoryConfig, error) {
@@ -121,6 +123,19 @@ func (config RepositoryConfig) Validate() error {
 	}
 	if config.Baseline != nil && (strings.TrimSpace(*config.Baseline) == "" || *config.Baseline != strings.TrimSpace(*config.Baseline)) {
 		return errors.New("baseline path is invalid")
+	}
+	if config.Generated != nil && *config.Generated != GeneratedExclude && *config.Generated != GeneratedInclude {
+		return fmt.Errorf("invalid generated-source policy %q", *config.Generated)
+	}
+	if config.ChangedFiles != nil {
+		if len(*config.ChangedFiles) == 0 {
+			return errors.New("changedFiles must not be empty")
+		}
+		files, err := normalizeChangedFiles(*config.ChangedFiles)
+		if err != nil {
+			return err
+		}
+		*config.ChangedFiles = files
 	}
 	return nil
 }

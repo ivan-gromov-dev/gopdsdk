@@ -96,7 +96,7 @@ func (entry BaselineEntry) key() baselineKey {
 	return baselineKey{entry.Rule, entry.Target, entry.Path, entry.Line, entry.Column, entry.Message}
 }
 
-func applyBaseline(baseline Baseline, findings []Finding) error {
+func applyBaseline(baseline Baseline, findings []Finding, changed map[string]bool) error {
 	entries := make(map[baselineKey]BaselineEntry, len(baseline.Entries))
 	for _, entry := range baseline.Entries {
 		entries[entry.key()] = entry
@@ -117,6 +117,9 @@ func applyBaseline(baseline Baseline, findings []Finding) error {
 	}
 	var stale []string
 	for _, entry := range baseline.Entries {
+		if changed != nil && !changed[entry.Path] {
+			continue
+		}
 		if !used[entry.key()] {
 			stale = append(stale, fmt.Sprintf("%s:%d:%d %s [%s]", entry.Path, entry.Line, entry.Column, entry.Rule, entry.Target))
 		}

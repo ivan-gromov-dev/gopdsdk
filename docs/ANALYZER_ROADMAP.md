@@ -203,14 +203,16 @@ targets. Its frozen flags currently include `--config`, `--format text|json`,
 `--target shared|simulator|device|both`, `--tags`, `--tests`,
 `--profile default|experimental|deep`, `--rules`, `--categories`,
 `--exclude-rules`, repeatable `--severity selector=severity`, and
-`--fail-on error|warning|performance|information|none`, plus `--baseline`; package
+`--fail-on error|warning|performance|information|none`, `--baseline`,
+`--generated exclude|include`, and repeatable `--changed-file`; package
 patterns are positional and default to `./...`. Text and structured output are
 implemented and independently tested. The kernel preserves deterministic
 related ranges and atomic suggested-edit groups. Repository defaults are read
 from `.gopdsdk-check.json`, or from the explicit `--config` path, using schema
 `gopdsdk-check-config/v1`. The configuration may set `format`, `target`,
 `buildTags`, `tests`, `patterns`, `profile`, `rules`, `categories`,
-`excludeRules`, `severities`, `failOn`, and `baseline`; explicit CLI flags and positional patterns
+`excludeRules`, `severities`, `failOn`, `baseline`, `generated`, and
+`changedFiles`; explicit CLI flags and positional patterns
 take precedence, followed by repository values and then built-in defaults.
 Unknown schemas, fields, invalid values, duplicate JSON documents, and a
 missing explicitly named file are configuration errors. A missing implicit
@@ -257,6 +259,16 @@ incomplete or duplicate identities, and unknown fields are configuration
 errors. Every entry must match at least one finding across all selected targets;
 otherwise the run fails with deterministic stale-entry locations. Baselines
 are read-only in Step 2; no command rewrites the analyzed workspace.
+
+Generated sources are analyzed with their package so rules retain complete
+type and control-flow context. They are excluded from reporting by default and
+may be included with `generated: include` or `--generated include`; suggested
+edits are always removed from generated-source diagnostics. Changed-file
+filtering likewise analyzes complete packages but reports only findings whose
+primary module-relative path was supplied by `changedFiles` or repeatable
+`--changed-file`. Paths must be canonical module-relative slash paths. During
+a changed-file run, baseline entries outside that path set are outside the run
+scope and therefore do not become stale.
 
 Deliverables:
 

@@ -74,6 +74,9 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	excludedFlag := flags.String("exclude-rules", "", "comma-separated rules to exclude")
 	failOn := flags.String("fail-on", "warning", "exit threshold: error, warning, performance, information, or none")
 	baselinePath := flags.String("baseline", "", "path to an adoption baseline")
+	generated := flags.String("generated", "exclude", "generated sources: exclude or include")
+	var changedValues repeatedFlag
+	flags.Var(&changedValues, "changed-file", "module-relative changed file; may be repeated")
 	var severityValues repeatedFlag
 	flags.Var(&severityValues, "severity", "severity override selector=severity; may be repeated")
 	if err := flags.Parse(args[1:]); err != nil {
@@ -118,6 +121,23 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	if !visited["baseline"] && repositoryConfig.Baseline != nil {
 		*baselinePath = *repositoryConfig.Baseline
 	}
+	if !visited["generated"] && repositoryConfig.Generated != nil {
+		*generated = string(*repositoryConfig.Generated)
+	}
+	changedFiles := append([]string(nil), changedValues...)
+	if len(changedFiles) == 0 && repositoryConfig.ChangedFiles != nil {
+		changedFiles = append(changedFiles, (*repositoryConfig.ChangedFiles)...)
+	}
+	if *generated != string(GeneratedExclude) && *generated != string(GeneratedInclude) {
+		return commandError(ExitConfiguration, fmt.Errorf("invalid generated-source policy %q", *generated))
+	}
+	if len(changedFiles) != 0 {
+		changedFiles, err = normalizeChangedFiles(changedFiles)
+		if err != nil {
+			return commandError(ExitConfiguration, err)
+		}
+	}
+	changedSet := changedFileSet(changedFiles)
 	severityOverrides := make(map[string]Severity, len(repositoryConfig.Severities)+len(severityValues))
 	for selector, severity := range repositoryConfig.Severities {
 		severityOverrides[selector] = severity
@@ -181,7 +201,11 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		if err := applyInlineSuppressions(snapshot, options.Catalog, result.Findings); err != nil {
 			return commandError(ExitConfiguration, err)
 		}
-		findings = append(findings, result.Findings...)
+		filtered, err := filterSourceFindings(snapshot, result.Findings, GeneratedPolicy(*generated), changedSet)
+		if err != nil {
+			return commandError(ExitInternal, err)
+		}
+		findings = append(findings, filtered...)
 	}
 	if len(loadErrors) != 0 {
 		sort.Slice(loadErrors, func(i, j int) bool {
@@ -202,7 +226,7 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		if err != nil {
 			return commandError(ExitConfiguration, err)
 		}
-		if err := applyBaseline(baseline, findings); err != nil {
+		if err := applyBaseline(baseline, findings, changedSet); err != nil {
 			return commandError(ExitConfiguration, err)
 		}
 	}

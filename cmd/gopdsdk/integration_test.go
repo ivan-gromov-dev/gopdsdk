@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +34,20 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 	runTestCommand(t, project, "go", "mod", "tidy")
 	runTestCommand(t, project, "go", "test", "./...")
 
+	checkJSON := runTestCommand(t, project, binary, "check", "--target", "shared", "--format", "json", "./...")
+	if !strings.Contains(checkJSON, `"schema": "gopdsdk-check/v1"`) || !strings.Contains(checkJSON, `"diagnostics": []`) {
+		t.Fatalf("clean check JSON is incomplete:\n%s", checkJSON)
+	}
+	assertExitCode(t, project, binary, 2, "check", "--format", "xml")
+	brokenPath := filepath.Join(project, "broken.go")
+	if err := os.WriteFile(brokenPath, []byte("package game\nfunc broken(\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertExitCode(t, project, binary, 3, "check", "--target", "shared", "./...")
+	if err := os.Remove(brokenPath); err != nil {
+		t.Fatal(err)
+	}
+
 	for _, commandName := range []string{"crashlog", "errorlog"} {
 		command := exec.Command(binary, commandName, "--sdk", filepath.Join(project, "fake sdk"))
 		output, runErr := command.CombinedOutput()
@@ -54,6 +69,18 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 				t.Fatalf("%v output does not contain %q:\n%s", test.arguments, required, output)
 			}
 		}
+	}
+}
+
+func assertExitCode(t *testing.T, directory, executable string, want int, arguments ...string) {
+	t.Helper()
+	command := exec.Command(executable, arguments...)
+	command.Dir = directory
+	command.Env = append(os.Environ(), "GOWORK=off")
+	output, err := command.CombinedOutput()
+	var exitError *exec.ExitError
+	if !errors.As(err, &exitError) || exitError.ExitCode() != want {
+		t.Fatalf("%s %v: exit = %v, want %d\n%s", executable, arguments, err, want, output)
 	}
 }
 

@@ -4,8 +4,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"os/signal"
 
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/analyzer"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/build"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/deviceconnect"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/devicelog"
@@ -17,7 +20,12 @@ import (
 )
 
 func main() {
-	args := os.Args[1:]
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	os.Exit(run(ctx, os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	var err error
 	if len(args) == 0 {
 		err = fmt.Errorf("expected a command (try \"gopdsdk doctor\")")
@@ -25,14 +33,21 @@ func main() {
 		switch args[0] {
 		case "build":
 			if len(args) > 1 && args[1] == "device" {
-				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+				err = deviceprobe.Run(ctx, args, stdout, stderr)
 			} else {
-				err = build.Run(context.Background(), args, os.Stdout, os.Stderr)
+				err = build.Run(ctx, args, stdout, stderr)
 			}
 		case "crashlog", "errorlog":
-			err = devicelog.Run(context.Background(), args, os.Stdout, os.Stderr)
+			err = devicelog.Run(ctx, args, stdout, stderr)
+		case "check":
+			options, optionsErr := analyzer.DefaultCheckOptions()
+			if optionsErr != nil {
+				err = &analyzer.CommandError{Code: analyzer.ExitInternal, Err: optionsErr}
+			} else {
+				err = analyzer.RunCheck(ctx, args, stdout, stderr, options)
+			}
 		case "doctor":
-			err = doctor.Run(context.Background(), args, os.Stdout, os.Stderr, doctor.Options{
+			err = doctor.Run(ctx, args, stdout, stderr, doctor.Options{
 				SimulatorProbe: func(ctx context.Context, sdkPath string) error {
 					_, probeErr := simprobe.Probe(ctx, simprobe.Config{SDKPath: sdkPath})
 					return probeErr
@@ -43,27 +58,31 @@ func main() {
 				},
 			})
 		case "init":
-			err = initproject.Run(context.Background(), args, os.Stdout, os.Stderr)
+			err = initproject.Run(ctx, args, stdout, stderr)
 		case "probe":
 			if len(args) > 1 && args[1] == "connection" {
-				err = deviceconnect.Run(context.Background(), args, os.Stdout, os.Stderr)
+				err = deviceconnect.Run(ctx, args, stdout, stderr)
 			} else if len(args) > 1 && args[1] == "device" {
-				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+				err = deviceprobe.Run(ctx, args, stdout, stderr)
 			} else {
-				err = simprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+				err = simprobe.Run(ctx, args, stdout, stderr)
 			}
 		case "run":
 			if len(args) > 1 && args[1] == "device" {
-				err = deviceprobe.Run(context.Background(), args, os.Stdout, os.Stderr)
+				err = deviceprobe.Run(ctx, args, stdout, stderr)
 			} else {
-				err = simrun.Run(context.Background(), args, os.Stdout, os.Stderr, simrun.Options{})
+				err = simrun.Run(ctx, args, stdout, stderr, simrun.Options{})
 			}
 		default:
 			err = fmt.Errorf("unknown command %q", args[0])
 		}
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "gopdsdk:", err)
-		os.Exit(2)
+		fmt.Fprintln(stderr, "gopdsdk:", err)
+		if coded, ok := err.(interface{ ExitCode() int }); ok {
+			return coded.ExitCode()
+		}
+		return 2
 	}
+	return 0
 }

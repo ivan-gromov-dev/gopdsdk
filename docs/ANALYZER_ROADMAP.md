@@ -231,13 +231,14 @@ for package load/type failure, `4` for an internal analyzer or output failure,
 and `130` for cancellation. A report is written before exit `1`; reporting is
 therefore separate from process status. External-consumer coverage exercises a
 clean structured run, invalid format, malformed repository configuration, and
-package load failure. Stable rules comprise the default profile; experimental
+package load failure. A separate test-only external driver exercises finding,
+internal analyzer failure, and cooperative cancellation process exits without
+adding injection hooks to the production command. Stable rules comprise the default profile; experimental
 and deep profiles opt into experimental rules, while deep is reserved for the
 later bounded interprocedural implementations. Category severity applies
 before a more specific rule severity. The default failure threshold is
 `warning`; lower-severity diagnostics remain in output without changing the
-process status. Baselines, changed-file filtering, and cancellation through a
-spawned external process remain outstanding.
+process status.
 
 Inline suppression is now implemented with the exact Go comment grammar
 `//gopdsdk:ignore rule-id -- non-empty reason`. A standalone directive applies
@@ -246,8 +247,7 @@ same line. Directives are parsed as Go comments rather than raw text, so string
 literals cannot suppress findings. Unknown rules, non-suppressible rules,
 missing reasons, and malformed directives are configuration errors. Suppressed
 diagnostics remain present in text and structured output with `kind: inline`
-and their reason, but never contribute to the failure threshold. Baselines,
-cancellation through a spawned external process remains outstanding.
+and their reason, but never contribute to the failure threshold.
 
 Adoption baselines use schema `gopdsdk-check-baseline/v1`. Every entry names
 the exact rule, target, module-relative slash path, one-based line and column,
@@ -274,11 +274,12 @@ policy, and changed-file path are all active. Directives outside the reporting
 scope remain valid and are reconsidered by a later full run. Checked-in golden
 fixtures freeze the complete human-readable and v1 structured records,
 including related ranges, suppression metadata, and edit groups. Command-level
-unit coverage distinguishes analyzer and output failures as exit `4`; external
-process coverage for synthetic findings, internal analyzer failure, and
-cancellation remains outstanding because the production Step 2 registry has no
-diagnostic implementations or test-only injection surface. Native macOS and
-Linux record identity also remains a CI evidence gate.
+unit coverage distinguishes analyzer and output failures as exit `4`.
+Test-only external-process coverage verifies synthetic findings, internal
+analyzer failure, and cooperative cancellation with exits `1`, `4`, and `130`.
+The existing native Windows, macOS, and Linux CI matrix runs the checked-in
+goldens through `go test ./...`; Windows passes locally, while current macOS
+and Linux results remain a CI evidence gate rather than local evidence.
 
 Deliverables:
 

@@ -122,6 +122,54 @@ func TestCallbackScopeContractsHaveLifetimeRules(t *testing.T) {
 	}
 }
 
+func TestEveryContractIsReachableFromRuleCatalog(t *testing.T) {
+	inventory := ContractInventory()
+	referenced := make(map[string]bool)
+	for _, rule := range inventory.Rules {
+		for _, contractID := range rule.ContractIDs {
+			referenced[contractID] = true
+		}
+	}
+	for _, contract := range inventory.Contracts {
+		if !referenced[contract.ID] {
+			t.Errorf("contract %q has no planned analyzer rule", contract.ID)
+		}
+	}
+}
+
+func TestInstalledOfficialSDKContractEvidence(t *testing.T) {
+	sdkRoot := os.Getenv("PLAYDATE_SDK_PATH")
+	if sdkRoot == "" {
+		t.Skip("PLAYDATE_SDK_PATH is not set")
+	}
+	for _, evidence := range []struct {
+		contract string
+		header   string
+		tokens   []string
+	}{
+		{"menu-image-retention", "pd_api_sys.h", []string{"setMenuImage", "LCDBitmap* bitmap", "int xOffset"}},
+		{"bitmap-owned-handle", "pd_api_gfx.h", []string{"loadBitmap", "newBitmap", "freeBitmap"}},
+		{"bitmap-table-borrowed-frame", "pd_api_gfx.h", []string{"getTableBitmap", "freeBitmapTable"}},
+		{"bitmap-close-semantics", "pd_api_gfx.h", []string{"setBitmapMask", "setStencilImage"}},
+		{"sprite-close-semantics", "pd_api_sprite.h", []string{"newSprite", "freeSprite", "setStencilImage"}},
+		{"audio-close-semantics", "pd_api_sound.h", []string{"freeSample", "freeSynth", "freeChannel", "freeSequence"}},
+		{"audio-render-buffer-callback-scope", "pd_api_sound.h", []string{"addCallbackSource", "setGenerator", "setMicCallback"}},
+		{"video-close-semantics", "pd_api_gfx.h", []string{"loadVideo", "freePlayer", "setContext"}},
+	} {
+		path := filepath.Join(sdkRoot, "C_API", "pd_api", evidence.header)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("contract %q: read official SDK header %s: %v", evidence.contract, path, err)
+			continue
+		}
+		for _, token := range evidence.tokens {
+			if !strings.Contains(string(data), token) {
+				t.Errorf("contract %q: official SDK header %s has no %q", evidence.contract, evidence.header, token)
+			}
+		}
+	}
+}
+
 func TestDeviceContractsClassifyEveryGoSymbol(t *testing.T) {
 	for _, contract := range ContractInventory().Contracts {
 		for _, symbol := range contract.GoSymbols {

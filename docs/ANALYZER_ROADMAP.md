@@ -1,6 +1,6 @@
 # Static analyzer roadmap
 
-Status: implementation active in Step 0; Step 1 complete. Updated 2026-09-01.
+Status: Steps 0–1 complete; Step 2 is next. Updated 2026-09-01.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -91,7 +91,7 @@ source may be diagnosed according to policy but is never edited automatically.
 
 ### Step 0 — Freeze the contract inventory
 
-In progress: `internal/features/analyzer` now defines the versioned contract
+Complete: `internal/features/analyzer` defines the versioned contract
 inventory and an immutable rule catalog with deterministic stable and
 experimental selection. It validates identifier families and normative
 document anchors, checks referenced exported declarations against the source
@@ -104,9 +104,18 @@ framebuffer, bitmap, microphone, and audio-render data each have positive and
 negative fixtures plus a stable lifetime-rule template. Device-profile Go
 symbols now explicitly classify forbidden, allowed, and replacement surfaces
 for concurrency, time, formatting, JSON, panic, cgo, reflection, and runtime
-control. Expanding the same coverage discipline to the remaining public
-contracts and reviewing them against official SDK sources remains to complete
-this step.
+control. Reverse audits now require every inventory contract to be reachable
+from a planned rule, every public direct `Close` method to have ownership or
+close semantics, and every optional capability method to exist in both native
+ABI contexts. The installed Playdate SDK 3.1.1 header audit additionally checks
+representative official symbols for retained menu images, owned and borrowed
+bitmap handles, masks and stencils, sprites, audio callbacks and cleanup, and
+video context and cleanup.
+
+The Windows unit suite, full repository tests, analyzer race test, and
+`go vet ./...` pass on 2026-09-01 with `PLAYDATE_SDK_PATH` selecting SDK 3.1.1.
+This verifies inventory structure and header evidence only; it does not imply an
+SDK build, Simulator launch, USB deployment, or physical-device behavior.
 
 Create the source-of-truth inventory from `API.md`, exported Go declarations,
 official SDK documentation, the device profile, and existing examples.

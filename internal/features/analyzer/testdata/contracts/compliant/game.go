@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/ivan-gromov-dev/gopdsdk/playdate"
 	pdjson "github.com/ivan-gromov-dev/gopdsdk/playdate/json"
@@ -38,6 +39,11 @@ func reflectedKind(value any) reflect.Kind { return reflect.TypeOf(value).Kind()
 
 // analyzer-contract: device-runtime-control-profile positive
 func explicitGC() { runtime.GC() }
+
+func durationOperations(text string, duration time.Duration) (time.Duration, string) {
+	parsed, _ := time.ParseDuration(text)
+	return parsed.Round(time.Millisecond), duration.String()
+}
 
 // analyzer-contract: context-optional-capability positive
 // analyzer-contract: video-capability-availability positive

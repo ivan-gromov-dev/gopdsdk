@@ -3,7 +3,6 @@ package analyzer
 import (
 	"fmt"
 	pathpkg "path"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -19,7 +18,7 @@ func normalizeChangedFiles(source []string) ([]string, error) {
 	seen := make(map[string]bool, len(source))
 	result := make([]string, 0, len(source))
 	for _, name := range source {
-		if name == "" || name != filepath.ToSlash(name) || name != pathpkg.Clean(name) || filepath.IsAbs(name) || strings.HasPrefix(name, "/") || strings.Contains(name, ":") || name == ".." || strings.HasPrefix(name, "../") {
+		if !validModuleRelativePath(name) {
 			return nil, fmt.Errorf("invalid module-relative changed file %q", name)
 		}
 		if !seen[name] {
@@ -29,6 +28,12 @@ func normalizeChangedFiles(source []string) ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
+}
+
+func validModuleRelativePath(name string) bool {
+	return name != "" && name != "." && name != ".." &&
+		name == pathpkg.Clean(name) && !strings.HasPrefix(name, "/") &&
+		!strings.HasPrefix(name, "../") && !strings.ContainsAny(name, "\\:\x00")
 }
 
 func changedFileSet(files []string) map[string]bool {

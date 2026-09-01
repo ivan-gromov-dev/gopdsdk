@@ -33,7 +33,7 @@ func TestNormalizeChangedFiles(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(files, []string{"dir/a.go", "z.go"}) {
 		t.Fatalf("files = %v, %v", files, err)
 	}
-	for _, invalid := range []string{"", "../game.go", "/game.go", `dir\game.go`, "C:game.go", "dir/../game.go"} {
+	for _, invalid := range []string{"", ".", "../game.go", "/game.go", `dir\game.go`, "C:game.go", "dir/../game.go", "bad\x00name.go"} {
 		if _, err := normalizeChangedFiles([]string{invalid}); err == nil {
 			t.Fatalf("invalid path %q succeeded", invalid)
 		}

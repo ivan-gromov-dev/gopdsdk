@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	pathpkg "path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -69,7 +68,7 @@ func (baseline Baseline) Validate(catalog RuleCatalog) error {
 		if entry.Target != TargetShared && entry.Target != TargetSimulator && entry.Target != TargetDevice {
 			return fmt.Errorf("entry %d has invalid target %q", index, entry.Target)
 		}
-		if entry.Path == "" || entry.Path != filepath.ToSlash(entry.Path) || entry.Path != pathpkg.Clean(entry.Path) || filepath.IsAbs(entry.Path) || strings.HasPrefix(entry.Path, "/") || strings.Contains(entry.Path, ":") || entry.Path == ".." || strings.HasPrefix(entry.Path, "../") {
+		if !validModuleRelativePath(entry.Path) {
 			return fmt.Errorf("entry %d has invalid module-relative path %q", index, entry.Path)
 		}
 		if entry.Line < 1 || entry.Column < 1 || entry.Message == "" || strings.TrimSpace(entry.Reason) == "" {

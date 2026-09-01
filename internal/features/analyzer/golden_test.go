@@ -33,6 +33,7 @@ func assertGolden(t *testing.T, name string, actual []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	expected = bytes.ReplaceAll(expected, []byte("\r\n"), []byte("\n"))
 	if !bytes.Equal(actual, expected) {
 		t.Fatalf("%s differs\n--- expected ---\n%s--- actual ---\n%s", name, expected, actual)
 	}

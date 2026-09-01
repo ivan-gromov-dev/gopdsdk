@@ -49,10 +49,11 @@ func TestBaselineRejectsUnknownDuplicateAndUnsafeEntries(t *testing.T) {
 	catalog := syntheticProtocolCatalog(t)
 	valid := BaselineEntry{Rule: "workspace-protocol-synthetic", Target: TargetDevice, Path: "game.go", Line: 2, Column: 6, Message: "finding", Reason: "migration"}
 	for name, baseline := range map[string]Baseline{
-		"schema":       {Schema: "gopdsdk-check-baseline/v2"},
-		"unknown rule": {Schema: BaselineSchema, Entries: []BaselineEntry{{Rule: "workspace-missing", Target: TargetDevice, Path: "game.go", Line: 1, Column: 1, Message: "finding", Reason: "migration"}}},
-		"unsafe path":  {Schema: BaselineSchema, Entries: []BaselineEntry{{Rule: valid.Rule, Target: valid.Target, Path: "../game.go", Line: 1, Column: 1, Message: "finding", Reason: "migration"}}},
-		"duplicate":    {Schema: BaselineSchema, Entries: []BaselineEntry{valid, valid}},
+		"schema":         {Schema: "gopdsdk-check-baseline/v2"},
+		"unknown rule":   {Schema: BaselineSchema, Entries: []BaselineEntry{{Rule: "workspace-missing", Target: TargetDevice, Path: "game.go", Line: 1, Column: 1, Message: "finding", Reason: "migration"}}},
+		"unsafe path":    {Schema: BaselineSchema, Entries: []BaselineEntry{{Rule: valid.Rule, Target: valid.Target, Path: "../game.go", Line: 1, Column: 1, Message: "finding", Reason: "migration"}}},
+		"backslash path": {Schema: BaselineSchema, Entries: []BaselineEntry{{Rule: valid.Rule, Target: valid.Target, Path: `dir\game.go`, Line: 1, Column: 1, Message: "finding", Reason: "migration"}}},
+		"duplicate":      {Schema: BaselineSchema, Entries: []BaselineEntry{valid, valid}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := baseline.Validate(catalog); err == nil {

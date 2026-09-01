@@ -84,6 +84,9 @@ func NewReport(catalog RuleCatalog, analyzerVersion, sdkVersion string, findings
 		}
 		diagnostic := Diagnostic{Rule: finding.RuleID, Category: rule.Family, Severity: rule.Default, Confidence: rule.Confidence,
 			Target: finding.Target, Message: finding.Message, Primary: primary, Documentation: documentationFor(rule, finding.URL), Related: []Related{}, Edits: []EditGroup{}}
+		if finding.Suppression != nil {
+			diagnostic.Suppression = &Suppression{Kind: finding.Suppression.Kind, Reason: finding.Suppression.Reason}
+		}
 		for _, item := range finding.Related {
 			rangeValue, err := parseSourceRange(item.Position, item.End)
 			if err != nil {

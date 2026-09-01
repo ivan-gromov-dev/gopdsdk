@@ -33,18 +33,21 @@ type Registry struct {
 // Finding is a normalized analyzer diagnostic. Step 2 adds the stable CLI and
 // structured protocol around this kernel-owned record.
 type Finding struct {
-	RuleID    RuleID
-	Analyzer  string
-	PackageID string
-	Target    Target
-	Position  string
-	End       string
-	Category  string
-	Message   string
-	URL       string
-	Related   []RelatedFinding
-	Fixes     []FindingFix
+	RuleID      RuleID
+	Analyzer    string
+	PackageID   string
+	Target      Target
+	Position    string
+	End         string
+	Category    string
+	Message     string
+	URL         string
+	Related     []RelatedFinding
+	Fixes       []FindingFix
+	Suppression *FindingSuppression
 }
+
+type FindingSuppression struct{ Kind, Reason string }
 
 // RelatedFinding adds a secondary source range to a finding.
 type RelatedFinding struct {

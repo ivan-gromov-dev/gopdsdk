@@ -74,14 +74,22 @@ func applySeverity(report *Report, overrides map[RuleID]Severity) {
 }
 
 func reportFails(report Report, threshold string) bool {
+	return reportFailureCount(report, threshold) != 0
+}
+
+func reportFailureCount(report Report, threshold string) int {
 	want, _ := failRank(threshold)
+	count := 0
 	for _, diagnostic := range report.Diagnostics {
+		if diagnostic.Suppression != nil {
+			continue
+		}
 		got, _ := failRank(string(diagnostic.Severity))
 		if got >= want && want != 0 {
-			return true
+			count++
 		}
 	}
-	return false
+	return count
 }
 
 func failRank(value string) (int, error) {

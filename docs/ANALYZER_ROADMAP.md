@@ -234,8 +234,19 @@ and deep profiles opt into experimental rules, while deep is reserved for the
 later bounded interprocedural implementations. Category severity applies
 before a more specific rule severity. The default failure threshold is
 `warning`; lower-severity diagnostics remain in output without changing the
-process status. Suppressions, baselines, changed-file filtering, and
-cancellation through a spawned external process remain outstanding.
+process status. Baselines, changed-file filtering, and cancellation through a
+spawned external process remain outstanding.
+
+Inline suppression is now implemented with the exact Go comment grammar
+`//gopdsdk:ignore rule-id -- non-empty reason`. A standalone directive applies
+to the immediately following line; a directive following code applies to that
+same line. Directives are parsed as Go comments rather than raw text, so string
+literals cannot suppress findings. Unknown rules, non-suppressible rules,
+missing reasons, and malformed directives are configuration errors. Suppressed
+diagnostics remain present in text and structured output with `kind: inline`
+and their reason, but never contribute to the failure threshold. Baselines,
+stale-suppression reporting, changed-file filtering, and cancellation through
+a spawned external process remain outstanding.
 
 Deliverables:
 

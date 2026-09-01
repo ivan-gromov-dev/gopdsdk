@@ -167,9 +167,15 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		for _, pkg := range snapshot.Packages {
 			loadErrors = append(loadErrors, pkg.Errors...)
 		}
+		if snapshotHasLoadErrors(snapshot) {
+			continue
+		}
 		result, err := options.Registry.Run(ctx, snapshot, selection)
 		if err != nil {
 			return classifyCheckError(err, ExitInternal)
+		}
+		if err := applyInlineSuppressions(snapshot, options.Catalog, result.Findings); err != nil {
+			return commandError(ExitConfiguration, err)
 		}
 		findings = append(findings, result.Findings...)
 	}
@@ -204,9 +210,18 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		return commandError(ExitInternal, err)
 	}
 	if reportFails(report, *failOn) {
-		return commandError(ExitFindings, fmt.Errorf("found %d diagnostic(s)", len(findings)))
+		return commandError(ExitFindings, fmt.Errorf("found %d threshold-level diagnostic(s)", reportFailureCount(report, *failOn)))
 	}
 	return nil
+}
+
+func snapshotHasLoadErrors(snapshot Snapshot) bool {
+	for _, pkg := range snapshot.Packages {
+		if len(pkg.Errors) != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 type repeatedFlag []string
@@ -286,8 +301,12 @@ func writeTextReport(out io.Writer, report Report) error {
 		return err
 	}
 	for _, diagnostic := range report.Diagnostics {
+		suppressed := ""
+		if diagnostic.Suppression != nil {
+			suppressed = fmt.Sprintf(" (suppressed %s: %s)", diagnostic.Suppression.Kind, diagnostic.Suppression.Reason)
+		}
 		if _, err := fmt.Fprintf(out, "%s:%d:%d: %s %s: %s [%s]\n", diagnostic.Primary.Path, diagnostic.Primary.Start.Line,
-			diagnostic.Primary.Start.Column, diagnostic.Severity, diagnostic.Rule, diagnostic.Message, diagnostic.Target); err != nil {
+			diagnostic.Primary.Start.Column, diagnostic.Severity, diagnostic.Rule, diagnostic.Message+suppressed, diagnostic.Target); err != nil {
 			return err
 		}
 		for _, related := range diagnostic.Related {

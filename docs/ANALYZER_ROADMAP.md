@@ -145,9 +145,12 @@ diagnostics, preserves overlays, separates execution failures from package load
 errors, and supports cancellation around parallel package execution. The runner
 also schedules imported packages before importers, implements the standard
 object and package fact lifecycle, and exposes stable shared syntax,
-control-flow, and SSA providers. Broader source-role classification and
-cancellation of an analyzer implementation while its `Run` function is active
-remain to complete this step.
+control-flow, and SSA providers. Source roles now distinguish production, test,
+example, generated, vendored, dependency, host-only, Simulator, device, and
+shared inputs. Host-only classification uses Go platform, architecture,
+compiler, cgo, and filename constraints without assigning analyzer-specific
+meaning to application build tags. Cancellation of an analyzer implementation
+while its `Run` function is active remains to complete this step.
 
 Introduce the analyzer feature without reporting SDK diagnostics yet.
 

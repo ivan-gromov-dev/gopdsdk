@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go/build/constraint"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -32,6 +34,7 @@ const (
 	RoleGenerated  SourceRole = "generated"
 	RoleVendored   SourceRole = "vendored"
 	RoleDependency SourceRole = "dependency"
+	RoleHostOnly   SourceRole = "host-only"
 	RoleShared     SourceRole = "shared"
 	RoleSimulator  SourceRole = "simulator"
 	RoleDevice     SourceRole = "device"
@@ -213,10 +216,11 @@ func normalizeSourceFile(root string, target Target, overlay map[string][]byte, 
 	if strings.Contains(segments, "/examples/") || strings.HasPrefix(strings.TrimPrefix(segments, "/"), "examples/") {
 		roles = append(roles, RoleExample)
 	}
-	if strings.Contains(segments, "/vendor/") {
+	vendored := strings.Contains(segments, "/vendor/")
+	if vendored {
 		roles = append(roles, RoleVendored)
 	}
-	if dependency {
+	if dependency || vendored {
 		roles = append(roles, RoleDependency)
 	}
 	content := overlay[absolute]
@@ -225,6 +229,9 @@ func normalizeSourceFile(root string, target Target, overlay map[string][]byte, 
 	}
 	if generatedSource(content) {
 		roles = append(roles, RoleGenerated)
+	}
+	if hostOnlySource(absolute, content) {
+		roles = append(roles, RoleHostOnly)
 	}
 	switch target {
 	case TargetShared:
@@ -235,6 +242,90 @@ func normalizeSourceFile(root string, target Target, overlay map[string][]byte, 
 		roles = append(roles, RoleDevice)
 	}
 	return SourceFile{Path: path, AbsolutePath: filepath.ToSlash(absolute), Roles: roles}
+}
+
+func hostOnlySource(name string, content []byte) bool {
+	base := strings.TrimSuffix(strings.ToLower(filepath.Base(name)), ".go")
+	if strings.HasSuffix(base, "_"+runtime.GOOS) || strings.HasSuffix(base, "_"+runtime.GOARCH) || strings.HasSuffix(base, "_"+runtime.GOOS+"_"+runtime.GOARCH) {
+		return true
+	}
+	expression := sourceBuildConstraint(content)
+	if expression == nil {
+		return false
+	}
+	// A file is host-only when its constraint cannot be satisfied after all
+	// standard host platform, compiler, and cgo tags are disabled. Unknown
+	// application tags remain unconstrained and therefore never create this
+	// classification by themselves.
+	tags := constraintTags(expression)
+	unknown := make([]string, 0, len(tags))
+	for tag := range tags {
+		if !hostBuildTag(tag) {
+			unknown = append(unknown, tag)
+		}
+	}
+	if len(unknown) > 16 {
+		return false
+	}
+	for assignment := 0; assignment < 1<<len(unknown); assignment++ {
+		values := make(map[string]bool, len(unknown))
+		for index, tag := range unknown {
+			values[tag] = assignment&(1<<index) != 0
+		}
+		if expression.Eval(func(tag string) bool { return values[tag] }) {
+			return false
+		}
+	}
+	return true
+}
+
+func sourceBuildConstraint(content []byte) constraint.Expr {
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "//go:build ") {
+			expression, err := constraint.Parse(line)
+			if err == nil {
+				return expression
+			}
+			return nil
+		}
+		if line != "" && !strings.HasPrefix(line, "//") {
+			break
+		}
+	}
+	return nil
+}
+
+func constraintTags(expression constraint.Expr) map[string]struct{} {
+	tags := make(map[string]struct{})
+	var visit func(constraint.Expr)
+	visit = func(expression constraint.Expr) {
+		switch expression := expression.(type) {
+		case *constraint.TagExpr:
+			tags[expression.Tag] = struct{}{}
+		case *constraint.NotExpr:
+			visit(expression.X)
+		case *constraint.AndExpr:
+			visit(expression.X)
+			visit(expression.Y)
+		case *constraint.OrExpr:
+			visit(expression.X)
+			visit(expression.Y)
+		}
+	}
+	visit(expression)
+	return tags
+}
+
+func hostBuildTag(tag string) bool {
+	_, exists := hostBuildTags[tag]
+	return exists
+}
+
+var hostBuildTags = map[string]struct{}{
+	"aix": {}, "android": {}, "darwin": {}, "dragonfly": {}, "freebsd": {}, "illumos": {}, "ios": {}, "js": {}, "linux": {}, "netbsd": {}, "openbsd": {}, "plan9": {}, "solaris": {}, "wasip1": {}, "windows": {},
+	"386": {}, "amd64": {}, "amd64p32": {}, "arm": {}, "arm64": {}, "loong64": {}, "mips": {}, "mips64": {}, "mips64le": {}, "mipsle": {}, "ppc64": {}, "ppc64le": {}, "riscv64": {}, "s390x": {}, "sparc64": {}, "wasm": {},
+	"cgo": {}, "gc": {}, "gccgo": {}, "unix": {},
 }
 
 func generatedSource(content []byte) bool {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -55,18 +56,41 @@ func TestLoadPackagesHonorsBuildTagsAndTests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var tagged, test bool
+	var tagged, test, hostOnly bool
 	for _, pkg := range snapshot.Packages {
 		for _, file := range pkg.Files {
 			tagged = tagged || strings.HasSuffix(file.Path, "tagged.go")
 			test = test || strings.HasSuffix(file.Path, "game_test.go") && hasRole(file.Roles, RoleTest)
+			hostOnly = hostOnly || strings.HasSuffix(file.Path, "host_only.go") && hasRole(file.Roles, RoleHostOnly)
 			if !hasRole(file.Roles, RoleDevice) {
 				t.Errorf("file %q has no device role: %v", file.Path, file.Roles)
 			}
 		}
 	}
-	if !tagged || !test {
-		t.Fatalf("tagged=%v test=%v packages=%+v", tagged, test, snapshot.Packages)
+	if !tagged || !test || !hostOnly {
+		t.Fatalf("tagged=%v test=%v hostOnly=%v packages=%+v", tagged, test, hostOnly, snapshot.Packages)
+	}
+}
+
+func TestHostOnlySourceUsesGoConstraintsWithoutInventingTargetTags(t *testing.T) {
+	for name, test := range map[string]struct {
+		source string
+		want   bool
+	}{
+		"host disjunction":     {"//go:build windows || linux || darwin\npackage game\n", true},
+		"host and application": {"//go:build linux && custom\npackage game\n", true},
+		"application only":     {"//go:build custom\npackage game\n", false},
+		"device alternative":   {"//go:build windows || tinygo\npackage game\n", false},
+		"malformed":            {"//go:build (\npackage game\n", false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := hostOnlySource("game.go", []byte(test.source)); got != test.want {
+				t.Fatalf("hostOnlySource() = %v, want %v", got, test.want)
+			}
+		})
+	}
+	if !hostOnlySource("game_"+runtime.GOOS+".go", []byte("package game\n")) {
+		t.Fatal("GOOS filename was not host-only")
 	}
 }
 

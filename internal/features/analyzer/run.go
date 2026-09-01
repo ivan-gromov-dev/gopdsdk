@@ -198,12 +198,12 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		if err != nil {
 			return classifyCheckError(err, ExitInternal)
 		}
-		if err := applyInlineSuppressions(snapshot, options.Catalog, result.Findings); err != nil {
-			return commandError(ExitConfiguration, err)
-		}
 		filtered, err := filterSourceFindings(snapshot, result.Findings, GeneratedPolicy(*generated), changedSet)
 		if err != nil {
 			return commandError(ExitInternal, err)
+		}
+		if err := applyInlineSuppressions(snapshot, options.Catalog, filtered, reportingSourcePaths(snapshot, GeneratedPolicy(*generated), changedSet), activeRuleSet(options.Catalog, selection, selectedTarget)); err != nil {
+			return commandError(ExitConfiguration, err)
 		}
 		findings = append(findings, filtered...)
 	}
@@ -250,6 +250,17 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		return commandError(ExitFindings, fmt.Errorf("found %d threshold-level diagnostic(s)", reportFailureCount(report, *failOn)))
 	}
 	return nil
+}
+
+func activeRuleSet(catalog RuleCatalog, selection RuleSelection, target Target) map[RuleID]bool {
+	result := make(map[RuleID]bool)
+	rules, _ := catalog.Select(selection)
+	for _, rule := range rules {
+		if containsTarget(rule.Targets, target) {
+			result[rule.ID] = true
+		}
+	}
+	return result
 }
 
 func snapshotHasLoadErrors(snapshot Snapshot) bool {

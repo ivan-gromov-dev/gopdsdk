@@ -247,8 +247,7 @@ literals cannot suppress findings. Unknown rules, non-suppressible rules,
 missing reasons, and malformed directives are configuration errors. Suppressed
 diagnostics remain present in text and structured output with `kind: inline`
 and their reason, but never contribute to the failure threshold. Baselines,
-stale inline-suppression reporting, changed-file filtering, and cancellation
-through a spawned external process remain outstanding.
+cancellation through a spawned external process remains outstanding.
 
 Adoption baselines use schema `gopdsdk-check-baseline/v1`. Every entry names
 the exact rule, target, module-relative slash path, one-based line and column,
@@ -269,6 +268,17 @@ primary module-relative path was supplied by `changedFiles` or repeatable
 `--changed-file`. Paths must be canonical module-relative slash paths. During
 a changed-file run, baseline entries outside that path set are outside the run
 scope and therefore do not become stale.
+
+Unused inline directives now fail as stale when their rule, target, generated
+policy, and changed-file path are all active. Directives outside the reporting
+scope remain valid and are reconsidered by a later full run. Checked-in golden
+fixtures freeze the complete human-readable and v1 structured records,
+including related ranges, suppression metadata, and edit groups. Command-level
+unit coverage distinguishes analyzer and output failures as exit `4`; external
+process coverage for synthetic findings, internal analyzer failure, and
+cancellation remains outstanding because the production Step 2 registry has no
+diagnostic implementations or test-only injection surface. Native macOS and
+Linux record identity also remains a CI evidence gate.
 
 Deliverables:
 

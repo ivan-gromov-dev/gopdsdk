@@ -43,12 +43,7 @@ func changedFileSet(files []string) map[string]bool {
 }
 
 func filterSourceFindings(snapshot Snapshot, findings []Finding, generated GeneratedPolicy, changed map[string]bool) ([]Finding, error) {
-	generatedFiles := make(map[string]bool)
-	for _, pkg := range snapshot.Packages {
-		for _, file := range pkg.Files {
-			generatedFiles[file.Path] = sourceHasRole(file.Roles, RoleGenerated)
-		}
-	}
+	generatedFiles := generatedSourcePaths(snapshot)
 	result := findings[:0]
 	for _, finding := range findings {
 		path, _, err := parsePosition(finding.Position)
@@ -67,6 +62,33 @@ func filterSourceFindings(snapshot Snapshot, findings []Finding, generated Gener
 		result = append(result, finding)
 	}
 	return result, nil
+}
+
+func reportingSourcePaths(snapshot Snapshot, generated GeneratedPolicy, changed map[string]bool) map[string]bool {
+	result := make(map[string]bool)
+	generatedFiles := generatedSourcePaths(snapshot)
+	for _, pkg := range snapshot.Packages {
+		for _, file := range pkg.Files {
+			if changed != nil && !changed[file.Path] {
+				continue
+			}
+			if generated == GeneratedExclude && generatedFiles[file.Path] {
+				continue
+			}
+			result[file.Path] = true
+		}
+	}
+	return result
+}
+
+func generatedSourcePaths(snapshot Snapshot) map[string]bool {
+	result := make(map[string]bool)
+	for _, pkg := range snapshot.Packages {
+		for _, file := range pkg.Files {
+			result[file.Path] = sourceHasRole(file.Roles, RoleGenerated)
+		}
+	}
+	return result
 }
 
 func sourceHasRole(roles []SourceRole, wanted SourceRole) bool {

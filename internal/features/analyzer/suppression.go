@@ -21,7 +21,7 @@ type suppressionKey struct {
 // the immediately preceding line. The required grammar is:
 //
 //	//gopdsdk:ignore rule-id -- non-empty reason
-func applyInlineSuppressions(snapshot Snapshot, catalog RuleCatalog, findings []Finding) error {
+func applyInlineSuppressions(snapshot Snapshot, catalog RuleCatalog, findings []Finding, activePaths map[string]bool, activeRules map[RuleID]bool) error {
 	directives := make(map[suppressionKey]string)
 	files := make(map[string]string)
 	for _, pkg := range snapshot.Packages {
@@ -88,8 +88,19 @@ func applyInlineSuppressions(snapshot Snapshot, catalog RuleCatalog, findings []
 			return err
 		}
 		if reason, ok := directives[suppressionKey{path, point.Line, findings[index].RuleID}]; ok {
+			delete(directives, suppressionKey{path, point.Line, findings[index].RuleID})
 			findings[index].Suppression = &FindingSuppression{Kind: "inline", Reason: reason}
 		}
+	}
+	var stale []string
+	for key := range directives {
+		if activePaths[key.Path] && activeRules[key.Rule] {
+			stale = append(stale, fmt.Sprintf("%s:%d %s", key.Path, key.Line, key.Rule))
+		}
+	}
+	if len(stale) != 0 {
+		sort.Strings(stale)
+		return fmt.Errorf("stale inline suppressions: %s", strings.Join(stale, "; "))
 	}
 	return nil
 }

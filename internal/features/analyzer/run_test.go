@@ -117,6 +117,42 @@ func TestRunCheckRepositoryConfigurationAndCLIOverride(t *testing.T) {
 	}
 }
 
+func TestRunCheckInternalAnalyzerAndOutputFailures(t *testing.T) {
+	root := checkFixture(t, "package game\n")
+	catalog := syntheticProtocolCatalog(t)
+	broken := &analysis.Analyzer{Name: "broken", Doc: "fail command boundary", Run: func(*analysis.Pass) (any, error) { return nil, errors.New("synthetic internal failure") }}
+	registry, err := NewRegistry(catalog, Registration{RuleID: "workspace-protocol-synthetic", Analyzer: broken})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := CheckOptions{Catalog: catalog, Registry: registry, AnalyzerVersion: "v1", SDKVersion: "v1.0.0", ModuleRoot: root}
+	for _, test := range []struct {
+		name string
+		run  func() error
+	}{
+		{"analyzer", func() error {
+			return RunCheck(context.Background(), []string{"check", "--target", "device"}, &bytes.Buffer{}, &bytes.Buffer{}, options)
+		}},
+		{"output", func() error {
+			empty, _ := NewRegistry(catalog)
+			local := options
+			local.Registry = empty
+			return RunCheck(context.Background(), []string{"check", "--target", "device"}, failingWriter{}, &bytes.Buffer{}, local)
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var commandErr *CommandError
+			if err := test.run(); !errors.As(err, &commandErr) || commandErr.Code != ExitInternal {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("synthetic output failure") }
+
 func checkFixture(t *testing.T, source string) string {
 	t.Helper()
 	root := t.TempDir()

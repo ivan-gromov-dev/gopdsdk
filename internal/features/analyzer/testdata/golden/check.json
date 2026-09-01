@@ -1,0 +1,68 @@
+{
+  "schema": "gopdsdk-check/v1",
+  "analyzerVersion": "v1",
+  "sdkVersion": "v1.0.0",
+  "diagnostics": [
+    {
+      "rule": "workspace-protocol-synthetic",
+      "category": "workspace",
+      "severity": "warning",
+      "confidence": "proven",
+      "target": "device",
+      "message": "synthetic protocol finding",
+      "primary": {
+        "path": "game/main.go",
+        "start": {
+          "line": 10,
+          "column": 2
+        },
+        "end": {
+          "line": 10,
+          "column": 8
+        }
+      },
+      "related": [
+        {
+          "message": "value originates here",
+          "range": {
+            "path": "game/owner.go",
+            "start": {
+              "line": 4,
+              "column": 1
+            },
+            "end": {
+              "line": 4,
+              "column": 6
+            }
+          }
+        }
+      ],
+      "documentation": "https://example.invalid/rule",
+      "suppression": {
+        "kind": "inline",
+        "reason": "fixture reason"
+      },
+      "edits": [
+        {
+          "message": "replace safely",
+          "edits": [
+            {
+              "range": {
+                "path": "game/main.go",
+                "start": {
+                  "line": 10,
+                  "column": 2
+                },
+                "end": {
+                  "line": 10,
+                  "column": 8
+                }
+              },
+              "newText": "fixed"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

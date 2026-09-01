@@ -60,3 +60,21 @@ func TestRunCheckRejectsMalformedUnknownAndDuplicateSuppressions(t *testing.T) {
 		})
 	}
 }
+
+func TestRunCheckDetectsOnlyInScopeStaleInlineSuppressions(t *testing.T) {
+	catalog := syntheticProtocolCatalog(t)
+	registry, err := NewRegistry(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := checkFixture(t, "package game\n//gopdsdk:ignore workspace-protocol-synthetic -- no longer needed\nfunc good() {}\n")
+	options := CheckOptions{Catalog: catalog, Registry: registry, AnalyzerVersion: "v1", SDKVersion: "v1.0.0", ModuleRoot: root}
+	err = RunCheck(context.Background(), []string{"check", "--target", "device"}, &bytes.Buffer{}, &bytes.Buffer{}, options)
+	var commandErr *CommandError
+	if !errors.As(err, &commandErr) || commandErr.Code != ExitConfiguration || !strings.Contains(err.Error(), "stale inline suppressions") {
+		t.Fatalf("stale suppression = %v", err)
+	}
+	if err := RunCheck(context.Background(), []string{"check", "--target", "device", "--changed-file", "other.go"}, &bytes.Buffer{}, &bytes.Buffer{}, options); err != nil {
+		t.Fatalf("out-of-scope suppression = %v", err)
+	}
+}

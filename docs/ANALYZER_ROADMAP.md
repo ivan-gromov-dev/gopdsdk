@@ -142,10 +142,12 @@ normalizes deterministic package, file, role, and partial load-error models. A
 validated registry now runs selected `go/analysis.Analyzer` implementations and
 their prerequisite graphs once per package, collects deterministic normalized
 diagnostics, preserves overlays, separates execution failures from package load
-errors, and supports cancellation around parallel package execution. Shared
-control-flow/SSA/fact providers, broader classification, and cancellation of an
-analyzer implementation while its `Run` function is active remain to complete
-this step.
+errors, and supports cancellation around parallel package execution. The runner
+also schedules imported packages before importers, implements the standard
+object and package fact lifecycle, and exposes stable shared syntax,
+control-flow, and SSA providers. Broader source-role classification and
+cancellation of an analyzer implementation while its `Run` function is active
+remain to complete this step.
 
 Introduce the analyzer feature without reporting SDK diagnostics yet.
 

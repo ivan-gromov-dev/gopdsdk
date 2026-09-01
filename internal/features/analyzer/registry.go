@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -78,8 +79,7 @@ func (err *ExecutionError) Unwrap() []error {
 	return result
 }
 
-// NewRegistry validates registrations and their prerequisite graph. Fact-based
-// analyzers are intentionally rejected until the Step 1 fact provider is added.
+// NewRegistry validates registrations and their prerequisite graph.
 func NewRegistry(catalog RuleCatalog, registrations ...Registration) (Registry, error) {
 	registered := make(map[RuleID]*analysis.Analyzer, len(registrations))
 	identities := make(map[*analysis.Analyzer]RuleID, len(registrations))
@@ -103,28 +103,6 @@ func NewRegistry(catalog RuleCatalog, registrations ...Registration) (Registry, 
 	}
 	if err := analysis.Validate(roots); err != nil {
 		return Registry{}, fmt.Errorf("validate analyzer registry: %w", err)
-	}
-	visited := make(map[*analysis.Analyzer]bool)
-	var rejectFacts func(*analysis.Analyzer) error
-	rejectFacts = func(analyzer *analysis.Analyzer) error {
-		if visited[analyzer] {
-			return nil
-		}
-		visited[analyzer] = true
-		if len(analyzer.FactTypes) != 0 {
-			return fmt.Errorf("analyzer %q requires the Step 1 fact provider", analyzer.Name)
-		}
-		for _, required := range analyzer.Requires {
-			if err := rejectFacts(required); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	for _, root := range roots {
-		if err := rejectFacts(root); err != nil {
-			return Registry{}, err
-		}
 	}
 	return Registry{catalog: catalog, registrations: registered}, nil
 }
@@ -154,30 +132,37 @@ func (registry Registry) Run(ctx context.Context, snapshot Snapshot, selection R
 		return RunResult{}, nil
 	}
 
-	type packageResult struct {
-		findings []Finding
-		failures []ExecutionFailure
-	}
-	results := make(chan packageResult, len(snapshot.Loaded))
+	executor := newExecutor(ctx, snapshot)
 	var group sync.WaitGroup
 	for _, loaded := range snapshot.Loaded {
 		loaded := loaded
-		group.Add(1)
-		go func() {
-			defer group.Done()
-			results <- runPackage(ctx, snapshot, loaded, roots, selected)
-		}()
+		for analyzer := range roots {
+			analyzer := analyzer
+			group.Add(1)
+			go func() { defer group.Done(); executor.execute(analyzer, loaded) }()
+		}
 	}
 	group.Wait()
-	close(results)
 	if err := ctx.Err(); err != nil {
 		return RunResult{}, err
 	}
 	var result RunResult
 	var failures []ExecutionFailure
-	for packageResult := range results {
-		result.Findings = append(result.Findings, packageResult.findings...)
-		failures = append(failures, packageResult.failures...)
+	for _, loaded := range snapshot.Loaded {
+		for analyzer, ruleID := range roots {
+			out := executor.result(analyzer, loaded)
+			if out.err != nil {
+				if !errors.Is(out.err, context.Canceled) && !errors.Is(out.err, context.DeadlineExceeded) {
+					failures = append(failures, ExecutionFailure{RuleID: ruleID, Analyzer: analyzer.Name, PackageID: loaded.ID, Err: out.err})
+				}
+				continue
+			}
+			if selected[ruleID] {
+				for _, diagnostic := range out.diagnostics {
+					result.Findings = append(result.Findings, normalizeDiagnostic(snapshot, loaded, ruleID, analyzer.Name, diagnostic))
+				}
+			}
+		}
 	}
 	sortFindings(result.Findings)
 	sort.Slice(failures, func(i, j int) bool {
@@ -202,71 +187,238 @@ type passResult struct {
 	err         error
 }
 
-func runPackage(ctx context.Context, snapshot Snapshot, loaded *packages.Package, roots map[*analysis.Analyzer]RuleID, selected map[RuleID]bool) (result struct {
-	findings []Finding
-	failures []ExecutionFailure
-}) {
-	completed := make(map[*analysis.Analyzer]passResult)
-	var execute func(*analysis.Analyzer) passResult
-	execute = func(analyzer *analysis.Analyzer) (out passResult) {
-		if prior, ok := completed[analyzer]; ok {
-			return prior
-		}
-		if err := ctx.Err(); err != nil {
-			out.err = err
-			completed[analyzer] = out
-			return out
-		}
-		inputs := make(map[*analysis.Analyzer]any, len(analyzer.Requires))
-		for _, required := range analyzer.Requires {
-			dependency := execute(required)
-			if dependency.err != nil {
-				out.err = fmt.Errorf("required analyzer %q failed: %w", required.Name, dependency.err)
-				completed[analyzer] = out
-				return out
-			}
-			inputs[required] = dependency.value
-		}
-		if loaded.IllTyped && !analyzer.RunDespiteErrors {
-			completed[analyzer] = out
-			return out
-		}
-		pass := &analysis.Pass{
-			Analyzer: analyzer, Fset: loaded.Fset, Files: loaded.Syntax,
-			OtherFiles: loaded.OtherFiles, IgnoredFiles: loaded.IgnoredFiles,
-			Pkg: loaded.Types, TypesInfo: loaded.TypesInfo, TypesSizes: loaded.TypesSizes,
-			ResultOf: inputs, TypeErrors: loaded.TypeErrors, Module: analysisModule(loaded.Module),
-			ReadFile: snapshot.readFile,
-		}
-		pass.Report = func(diagnostic analysis.Diagnostic) { out.diagnostics = append(out.diagnostics, diagnostic) }
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				out.err = fmt.Errorf("panic: %v", recovered)
-			}
-			if out.err == nil && analyzer.ResultType != nil && reflect.TypeOf(out.value) != analyzer.ResultType {
-				out.err = fmt.Errorf("returned result type %T, want %v", out.value, analyzer.ResultType)
-			}
-			completed[analyzer] = out
-		}()
-		out.value, out.err = analyzer.Run(pass)
+type executionKey struct {
+	analyzer *analysis.Analyzer
+	pkg      *packages.Package
+}
+type executionState struct {
+	ready  chan struct{}
+	result passResult
+}
+
+type executor struct {
+	ctx        context.Context
+	snapshot   Snapshot
+	mu         sync.Mutex
+	executions map[executionKey]*executionState
+	facts      factStore
+}
+
+func newExecutor(ctx context.Context, snapshot Snapshot) *executor {
+	return &executor{ctx: ctx, snapshot: snapshot, executions: make(map[executionKey]*executionState), facts: newFactStore()}
+}
+
+func (executor *executor) result(analyzer *analysis.Analyzer, pkg *packages.Package) passResult {
+	executor.mu.Lock()
+	state := executor.executions[executionKey{analyzer, pkg}]
+	executor.mu.Unlock()
+	if state == nil {
+		return passResult{err: errors.New("analyzer execution was not scheduled")}
+	}
+	<-state.ready
+	return state.result
+}
+
+func (executor *executor) execute(analyzer *analysis.Analyzer, loaded *packages.Package) passResult {
+	key := executionKey{analyzer, loaded}
+	executor.mu.Lock()
+	if state := executor.executions[key]; state != nil {
+		executor.mu.Unlock()
+		<-state.ready
+		return state.result
+	}
+	state := &executionState{ready: make(chan struct{})}
+	executor.executions[key] = state
+	executor.mu.Unlock()
+	out := executor.run(analyzer, loaded)
+	executor.mu.Lock()
+	state.result = out
+	close(state.ready)
+	executor.mu.Unlock()
+	return out
+}
+
+func (executor *executor) run(analyzer *analysis.Analyzer, loaded *packages.Package) (out passResult) {
+	if err := executor.ctx.Err(); err != nil {
+		out.err = err
 		return out
 	}
-
-	for analyzer, ruleID := range roots {
-		out := execute(analyzer)
-		if out.err != nil {
-			if !errors.Is(out.err, context.Canceled) && !errors.Is(out.err, context.DeadlineExceeded) {
-				result.failures = append(result.failures, ExecutionFailure{RuleID: ruleID, Analyzer: analyzer.Name, PackageID: loaded.ID, Err: out.err})
-			}
-			continue
+	inputs := make(map[*analysis.Analyzer]any, len(analyzer.Requires))
+	for _, required := range analyzer.Requires {
+		dependency := executor.execute(required, loaded)
+		if dependency.err != nil {
+			out.err = fmt.Errorf("required analyzer %q failed: %w", required.Name, dependency.err)
+			return out
 		}
-		if selected[ruleID] {
-			for _, diagnostic := range out.diagnostics {
-				result.findings = append(result.findings, normalizeDiagnostic(snapshot, loaded, ruleID, analyzer.Name, diagnostic))
+		inputs[required] = dependency.value
+	}
+	if len(analyzer.FactTypes) != 0 {
+		imports := make([]*packages.Package, 0, len(loaded.Imports))
+		for _, imported := range loaded.Imports {
+			imports = append(imports, imported)
+		}
+		sort.Slice(imports, func(i, j int) bool { return imports[i].ID < imports[j].ID })
+		for _, imported := range imports {
+			if dependency := executor.execute(analyzer, imported); dependency.err != nil {
+				out.err = fmt.Errorf("analyze imported package %q for facts: %w", imported.ID, dependency.err)
+				return out
 			}
+		}
+	}
+	if loaded.IllTyped && !analyzer.RunDespiteErrors {
+		return out
+	}
+	pass := &analysis.Pass{Analyzer: analyzer, Fset: loaded.Fset, Files: loaded.Syntax, OtherFiles: loaded.OtherFiles, IgnoredFiles: loaded.IgnoredFiles,
+		Pkg: loaded.Types, TypesInfo: loaded.TypesInfo, TypesSizes: loaded.TypesSizes, ResultOf: inputs, TypeErrors: loaded.TypeErrors,
+		Module: analysisModule(loaded.Module), ReadFile: executor.snapshot.readFile}
+	pass.Report = func(diagnostic analysis.Diagnostic) { out.diagnostics = append(out.diagnostics, diagnostic) }
+	executor.facts.attach(pass)
+	defer func() {
+		executor.facts.finish(pass)
+		if recovered := recover(); recovered != nil {
+			out.err = fmt.Errorf("panic: %v", recovered)
+		}
+		if out.err == nil && analyzer.ResultType != nil && reflect.TypeOf(out.value) != analyzer.ResultType {
+			out.err = fmt.Errorf("returned result type %T, want %v", out.value, analyzer.ResultType)
+		}
+	}()
+	out.value, out.err = analyzer.Run(pass)
+	return out
+}
+
+type objectFactKey struct {
+	analyzer *analysis.Analyzer
+	object   types.Object
+	kind     reflect.Type
+}
+type packageFactKey struct {
+	analyzer *analysis.Analyzer
+	pkg      *types.Package
+	kind     reflect.Type
+}
+type factStore struct {
+	mu       sync.RWMutex
+	objects  map[objectFactKey]analysis.Fact
+	packages map[packageFactKey]analysis.Fact
+	active   map[*analysis.Pass]bool
+}
+
+func newFactStore() factStore {
+	return factStore{objects: make(map[objectFactKey]analysis.Fact), packages: make(map[packageFactKey]analysis.Fact), active: make(map[*analysis.Pass]bool)}
+}
+
+func (store *factStore) attach(pass *analysis.Pass) {
+	store.mu.Lock()
+	store.active[pass] = true
+	store.mu.Unlock()
+	pass.ImportObjectFact = func(object types.Object, fact analysis.Fact) bool { return store.importObject(pass, object, fact) }
+	pass.ImportPackageFact = func(pkg *types.Package, fact analysis.Fact) bool { return store.importPackage(pass, pkg, fact) }
+	pass.ExportObjectFact = func(object types.Object, fact analysis.Fact) { store.exportObject(pass, object, fact) }
+	pass.ExportPackageFact = func(fact analysis.Fact) { store.exportPackage(pass, fact) }
+	pass.AllObjectFacts = func() []analysis.ObjectFact { return store.allObjectFacts(pass) }
+	pass.AllPackageFacts = func() []analysis.PackageFact { return store.allPackageFacts(pass) }
+}
+
+func (store *factStore) finish(pass *analysis.Pass) {
+	store.mu.Lock()
+	delete(store.active, pass)
+	store.mu.Unlock()
+}
+
+func (store *factStore) check(pass *analysis.Pass, fact analysis.Fact) reflect.Type {
+	if fact == nil || reflect.TypeOf(fact).Kind() != reflect.Pointer {
+		panic("analysis fact must be a non-nil pointer")
+	}
+	store.mu.RLock()
+	active := store.active[pass]
+	store.mu.RUnlock()
+	if !active {
+		panic("analysis fact accessed after pass completion")
+	}
+	kind := reflect.TypeOf(fact)
+	for _, declared := range pass.Analyzer.FactTypes {
+		if reflect.TypeOf(declared) == kind {
+			return kind
+		}
+	}
+	panic(fmt.Sprintf("analyzer %q used undeclared fact type %v", pass.Analyzer.Name, kind))
+}
+
+func cloneFact(fact analysis.Fact) analysis.Fact {
+	copy := reflect.New(reflect.TypeOf(fact).Elem())
+	copy.Elem().Set(reflect.ValueOf(fact).Elem())
+	return copy.Interface().(analysis.Fact)
+}
+
+func (store *factStore) importObject(pass *analysis.Pass, object types.Object, fact analysis.Fact) bool {
+	kind := store.check(pass, fact)
+	store.mu.RLock()
+	stored := store.objects[objectFactKey{pass.Analyzer, object, kind}]
+	store.mu.RUnlock()
+	if stored == nil {
+		return false
+	}
+	reflect.ValueOf(fact).Elem().Set(reflect.ValueOf(stored).Elem())
+	return true
+}
+func (store *factStore) importPackage(pass *analysis.Pass, pkg *types.Package, fact analysis.Fact) bool {
+	kind := store.check(pass, fact)
+	store.mu.RLock()
+	stored := store.packages[packageFactKey{pass.Analyzer, pkg, kind}]
+	store.mu.RUnlock()
+	if stored == nil {
+		return false
+	}
+	reflect.ValueOf(fact).Elem().Set(reflect.ValueOf(stored).Elem())
+	return true
+}
+func (store *factStore) exportObject(pass *analysis.Pass, object types.Object, fact analysis.Fact) {
+	kind := store.check(pass, fact)
+	if object == nil || object.Pkg() != pass.Pkg {
+		panic("analysis object fact belongs to another package")
+	}
+	store.mu.Lock()
+	store.objects[objectFactKey{pass.Analyzer, object, kind}] = cloneFact(fact)
+	store.mu.Unlock()
+}
+func (store *factStore) exportPackage(pass *analysis.Pass, fact analysis.Fact) {
+	kind := store.check(pass, fact)
+	store.mu.Lock()
+	store.packages[packageFactKey{pass.Analyzer, pass.Pkg, kind}] = cloneFact(fact)
+	store.mu.Unlock()
+}
+func (store *factStore) allObjectFacts(pass *analysis.Pass) []analysis.ObjectFact {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	var result []analysis.ObjectFact
+	for key, fact := range store.objects {
+		if key.analyzer == pass.Analyzer && visiblePackage(pass.Pkg, key.object.Pkg()) {
+			result = append(result, analysis.ObjectFact{Object: key.object, Fact: cloneFact(fact)})
 		}
 	}
 	return result
+}
+func (store *factStore) allPackageFacts(pass *analysis.Pass) []analysis.PackageFact {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	var result []analysis.PackageFact
+	for key, fact := range store.packages {
+		if key.analyzer == pass.Analyzer && visiblePackage(pass.Pkg, key.pkg) {
+			result = append(result, analysis.PackageFact{Package: key.pkg, Fact: cloneFact(fact)})
+		}
+	}
+	return result
+}
+func visiblePackage(current, candidate *types.Package) bool {
+	if current == candidate {
+		return true
+	}
+	for _, imported := range current.Imports() {
+		if imported == candidate {
+			return true
+		}
+	}
+	return false
 }
 
 func (snapshot Snapshot) readFile(name string) ([]byte, error) {

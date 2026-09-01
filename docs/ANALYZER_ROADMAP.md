@@ -203,14 +203,14 @@ targets. Its frozen flags currently include `--config`, `--format text|json`,
 `--target shared|simulator|device|both`, `--tags`, `--tests`,
 `--profile default|experimental|deep`, `--rules`, `--categories`,
 `--exclude-rules`, repeatable `--severity selector=severity`, and
-`--fail-on error|warning|performance|information|none`; package
+`--fail-on error|warning|performance|information|none`, plus `--baseline`; package
 patterns are positional and default to `./...`. Text and structured output are
 implemented and independently tested. The kernel preserves deterministic
 related ranges and atomic suggested-edit groups. Repository defaults are read
 from `.gopdsdk-check.json`, or from the explicit `--config` path, using schema
 `gopdsdk-check-config/v1`. The configuration may set `format`, `target`,
 `buildTags`, `tests`, `patterns`, `profile`, `rules`, `categories`,
-`excludeRules`, `severities`, and `failOn`; explicit CLI flags and positional patterns
+`excludeRules`, `severities`, `failOn`, and `baseline`; explicit CLI flags and positional patterns
 take precedence, followed by repository values and then built-in defaults.
 Unknown schemas, fields, invalid values, duplicate JSON documents, and a
 missing explicitly named file are configuration errors. A missing implicit
@@ -245,8 +245,18 @@ literals cannot suppress findings. Unknown rules, non-suppressible rules,
 missing reasons, and malformed directives are configuration errors. Suppressed
 diagnostics remain present in text and structured output with `kind: inline`
 and their reason, but never contribute to the failure threshold. Baselines,
-stale-suppression reporting, changed-file filtering, and cancellation through
-a spawned external process remain outstanding.
+stale inline-suppression reporting, changed-file filtering, and cancellation
+through a spawned external process remain outstanding.
+
+Adoption baselines use schema `gopdsdk-check-baseline/v1`. Every entry names
+the exact rule, target, module-relative slash path, one-based line and column,
+diagnostic message, and a non-empty reason. Matching entries remain visible in
+the report with `kind: baseline` and do not contribute to the failure
+threshold. Unknown or non-suppressible rules, unsafe or non-canonical paths,
+incomplete or duplicate identities, and unknown fields are configuration
+errors. Every entry must match at least one finding across all selected targets;
+otherwise the run fails with deterministic stale-entry locations. Baselines
+are read-only in Step 2; no command rewrites the analyzed workspace.
 
 Deliverables:
 

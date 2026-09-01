@@ -32,6 +32,7 @@ type RepositoryConfig struct {
 	ExcludedRules *[]RuleID           `json:"excludeRules,omitempty"`
 	Severities    map[string]Severity `json:"severities,omitempty"`
 	FailOn        *string             `json:"failOn,omitempty"`
+	Baseline      *string             `json:"baseline,omitempty"`
 }
 
 func loadRepositoryConfig(moduleRoot, requestedPath string, explicit bool) (RepositoryConfig, error) {
@@ -117,6 +118,9 @@ func (config RepositoryConfig) Validate() error {
 		if selector == "" || !severity.valid() {
 			return fmt.Errorf("invalid severity override %q=%q", selector, severity)
 		}
+	}
+	if config.Baseline != nil && (strings.TrimSpace(*config.Baseline) == "" || *config.Baseline != strings.TrimSpace(*config.Baseline)) {
+		return errors.New("baseline path is invalid")
 	}
 	return nil
 }

@@ -73,6 +73,7 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	categoriesFlag := flags.String("categories", "", "comma-separated category selection")
 	excludedFlag := flags.String("exclude-rules", "", "comma-separated rules to exclude")
 	failOn := flags.String("fail-on", "warning", "exit threshold: error, warning, performance, information, or none")
+	baselinePath := flags.String("baseline", "", "path to an adoption baseline")
 	var severityValues repeatedFlag
 	flags.Var(&severityValues, "severity", "severity override selector=severity; may be repeated")
 	if err := flags.Parse(args[1:]); err != nil {
@@ -113,6 +114,9 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	}
 	if !visited["fail-on"] && repositoryConfig.FailOn != nil {
 		*failOn = *repositoryConfig.FailOn
+	}
+	if !visited["baseline"] && repositoryConfig.Baseline != nil {
+		*baselinePath = *repositoryConfig.Baseline
 	}
 	severityOverrides := make(map[string]Severity, len(repositoryConfig.Severities)+len(severityValues))
 	for selector, severity := range repositoryConfig.Severities {
@@ -193,6 +197,15 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		return commandError(ExitPackageLoad, formatLoadErrors(loadErrors))
 	}
 	sortFindings(findings)
+	if *baselinePath != "" {
+		baseline, err := loadBaseline(options.ModuleRoot, *baselinePath, options.Catalog)
+		if err != nil {
+			return commandError(ExitConfiguration, err)
+		}
+		if err := applyBaseline(baseline, findings); err != nil {
+			return commandError(ExitConfiguration, err)
+		}
+	}
 	report, err := NewReport(options.Catalog, options.AnalyzerVersion, options.SDKVersion, findings)
 	if err != nil {
 		return commandError(ExitInternal, err)

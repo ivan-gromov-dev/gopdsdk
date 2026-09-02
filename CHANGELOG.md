@@ -7,6 +7,19 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Added the initial Step 4 application/lifecycle pack on 2026-09-02: eleven
+  default error rules cover application entry, undeliverable lifecycle methods,
+  scheduler update boundaries, nested scheduler/stencil execution, active sprite
+  close, transient framebuffer/bitmap/microphone/render-buffer escapes, and
+  locally proven owned acquisitions lost during termination. Rules run for
+  shared, Simulator, and device analysis targets. Unit fixtures and external
+  consumer CLI entry checks cover receiver shapes, helpers, generic factories,
+  unknown dispatch, successful cleanup, and all target selections. Windows
+  targeted race tests and `go vet ./...` pass; repository examples produce no
+  application/lifetime findings. Step 4 remains open for pre-existing ownership
+  and callback-registration facts and generated-entry acceptance. No new native
+  SDK or hardware acceptance is claimed.
+
 - Completed the local implementation and acceptance matrix for the fifteen
   Step 3 device rules on 2026-09-02. The real external-consumer CLI tests cover
   positive/negative sources, generated-source and build-tag inclusion/exclusion,

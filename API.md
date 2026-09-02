@@ -120,6 +120,41 @@ retain platform order. Release owned native resources on
 `LifecycleTerminate`; initialization must roll back resources already acquired
 when a later acquisition fails.
 
+## Application diagnostics
+
+`gopdsdk check` enables application and callback-lifetime diagnostics for
+`shared`, `simulator`, and `device`. All currently implemented rules below are
+default errors; unresolved dispatch and ownership do not produce an error.
+
+| Rule | Proven condition checked |
+| --- | --- |
+| `application-entry` | A package containing `pdxinfo` is `main` or lacks `func New() playdate.Game`. Libraries without `pdxinfo` do not require a factory. |
+| `application-lifecycle-shape` | A concrete Game returned by `New` or a local factory helper has `HandleLifecycle` but its actual pointer/value method set does not implement `LifecycleGame`. |
+| `application-scheduler-update-boundary` | A local static call path from Game `Init` or `HandleLifecycle` reaches `Scheduler.Update`. |
+| `application-nested-stencil` | A registered stencil callback reaches another `WithStencil` through local static calls. |
+| `application-nested-scheduler` | A scheduled closure calls `Update` on the same captured scheduler, with a locally stable capture. |
+| `application-sprite-callback-close` | A sprite callback closes a participating sprite parameter, directly or through a local helper. |
+| `application-termination-resource-leak` | A local owned acquisition succeeds on a visible termination path and reaches return without cleanup or transfer. |
+| `lifetime-framebuffer-escape` | A registered framebuffer callback stores its view or byte slice outside the callback. |
+| `lifetime-bitmap-data-escape` | A registered bitmap-data callback stores its view, image bytes, or mask bytes outside the callback. |
+| `lifetime-microphone-samples-escape` | A recording callback retains its samples outside the callback. |
+| `lifetime-audio-render-buffer-escape` | A PCM or generator render callback retains its output slices outside the callback. |
+
+Game method mismatches that already prevent Go type checking remain package-load
+errors. The analyzer follows at most eight local static call edges; unknown
+interface dispatch and arbitrary aliases are outside these proofs. Conditional
+helper blocks are omitted when argument facts are unavailable. Copies of
+transient bytes into owned storage are allowed. The current public contract does
+not prohibit retaining `Context` itself, so there is no Context-escape rule.
+
+Termination analysis explores at most 256 local path states, using the loaded
+SDK's `LifecycleTerminate` constant and explicit successful acquisition checks.
+Paths with other unresolved conditions are omitted.
+Unknown calls and deferred helpers may perform aggregate cleanup and therefore
+discard ownership knowledge. Handles already stored in game fields at callback
+entry, previously registered callbacks, loops, and cross-package cleanup require
+additional ownership facts and are not diagnosed by this local rule.
+
 ## Context capabilities
 
 `playdate.Context` composes five smaller interfaces:

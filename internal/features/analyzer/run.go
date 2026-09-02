@@ -41,15 +41,13 @@ type CheckOptions struct {
 	ModuleRoot      string
 }
 
-// DefaultCheckOptions builds the production analyzer composition. Rules are
-// registered by their implementation steps; Step 2 intentionally starts with
-// an empty implementation registry.
+// DefaultCheckOptions builds the production analyzer composition.
 func DefaultCheckOptions() (CheckOptions, error) {
 	catalog, err := NewRuleCatalog(ContractInventory())
 	if err != nil {
 		return CheckOptions{}, err
 	}
-	registry, err := NewRegistry(catalog)
+	registry, err := NewRegistry(catalog, deviceRuleRegistrations()...)
 	if err != nil {
 		return CheckOptions{}, err
 	}

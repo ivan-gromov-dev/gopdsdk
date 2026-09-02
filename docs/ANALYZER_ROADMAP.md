@@ -1,6 +1,8 @@
 # Static analyzer roadmap
 
-Status: Steps 0–1 complete; Step 2 is in progress. Updated 2026-09-01.
+Status: Steps 0–1 complete; Step 2 is in progress. Step 3 implementation and
+local acceptance are complete; native three-platform CI is pending.
+Updated 2026-09-02.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -307,6 +309,84 @@ without depending on human-readable output.
 ### Step 3 — Ship the first useful device-profile rule pack
 
 Implement fast, high-confidence syntax, type, and import rules.
+
+Implementation complete, native CI pending: the production registry implements fifteen stable
+device rules, including goroutines, channel syntax and operations, `select`, runtime
+`time` symbols while preserving pure `time.Duration` operations, `fmt`,
+`encoding/json`, `recover`, finalizers, application cgo imports, reflection
+outside the audited subset, and the documented unavailable runtime-control
+hooks. Symbol rules diagnose references as well as direct calls, so assigning
+an unavailable function value cannot evade the check. A shared fact provider
+also propagates the shortest statically known path through local and exported
+dependency functions to `fmt`, `encoding/json`, forbidden `time`, reflection,
+finalizer, and runtime-control functions, and goroutine, channel, `select`, and
+`recover` operations; unused safe exports do not
+produce findings, and a forbidden package is the terminal cause rather than a
+source of secondary diagnostics from its implementation. The audited `time`,
+`reflect`, and `runtime` symbol policies are terminal boundaries: allowed device
+APIs do not inherit violations from their host Go implementations. Call-site reporting
+includes package variable initializers and package-level function literals.
+Static resolution handles parenthesized calls, explicit generic function
+instantiations, and methods on instantiated generic types, including generic
+calls inside dependency wrappers. Package facts now propagate the shortest known
+paths from dependency `init` functions and package variable initializers through
+imports, including blank, renamed, and dot imports, with diagnostics at the
+import path. Static traversal follows immediately invoked literals but excludes
+uncalled closure bodies from function and package initialization facts.
+Declaration-initialized local function variables with one write and no address
+escape now resolve to named functions or concrete methods, including alias
+chains and generic instantiations. Calls through such variables also follow
+local closure bodies, including nested and deferred calls, visiting each reached
+literal once per traversal. Merely creating or returning a closure does not
+reach its body. The same resolution feeds call-site reports,
+dependency function facts, and initialization facts. Other dynamic function
+values and interface calls remain unresolved. Windows regression
+coverage includes multiple `init` functions, transitive initialization,
+deterministic shortest-path selection, and safe closure creation; the maintained
+game examples still pass the device-profile CLI check on 2026-09-02.
+Device cgo loading is independent of the host C compiler and preserves Go
+build-tag selection, including cgo-only directories under `./...`. Temporary
+package overlays never write source files or appear in the resulting snapshot.
+The maintained game-example packages produce no default device findings;
+host-only generators under their internal directories are outside that scope.
+
+The source pack adds `device-panic-cleanup` for explicit panic after a potentially
+registered defer, `device-go-assembly` for selected Go assembler implementations,
+`device-compiler-directive` for linkname aliases to forbidden public symbols, and
+informational `device-build-constraint` for host-selected files excluded by the
+fixed device profile. Constraint checks support modern and legacy headers and
+preserve unknown application/version tags. `device-channel` now covers generic
+channel type arguments, including inferred and imported named channel types.
+Normal defer, portable generics, native ARM assembly, and other directives are
+not categorically forbidden. Rule bounds are documented in
+[API.md](../API.md#device-source-compatibility).
+
+Windows regression fixtures cover control-flow branches, loops, shadowed
+builtins, closure boundaries, comment grammar, assembly declarations, and fixed
+Windows/macOS/Linux filename constraints. The external-consumer CLI policy
+matrix covers every rule with positive/negative fixtures, generated-source and
+build-tag inclusion/exclusion, test selection, inline suppression, baseline,
+and combined/Simulator target selection. Go disallows cgo in `_test.go`, so that
+rule is exercised in the production source of a package with a test variant.
+
+The opt-in `TestAnalyzerDeviceBuildAcceptance` passed on Windows with official
+SDK 3.1.1, TinyGo 0.41.1, and Arm GCC 15.3.1 on 2026-09-02. It confirms successful
+packaging of normal defer and Duration operations, the ARM linker rejection of
+Go assembly, and the linked-symbol audit rejection of `reflect.MakeSlice`.
+It also preserves the observed `reflect.Value.Call` discrepancy: the analyzer
+rejects that operation even when its inlined panic trap leaves no forbidden
+ELF symbol and packaging succeeds. See [CHANGELOG.md](../CHANGELOG.md#unreleased)
+for measurements and evidence limits. Run with
+`GOPDSDK_ANALYZER_DEVICE_ACCEPTANCE=1` and `PLAYDATE_SDK_PATH`; optionally set
+`GOPDSDK_ANALYZER_EVIDENCE_DIR` to retain sources, JSON reports, and build logs.
+
+The remaining Step 3 acceptance gate is the existing native CI workflow on
+Windows, macOS, and Linux for these changes. Cross-compilation or local Windows
+tests cannot substitute for those results. Dynamic/interface dispatch,
+implicit/interprocedural panic cleanup, private linker names, and newly
+discovered version-specific incompatibilities are documented analysis limits,
+not claims of whole-program coverage. No generic or directive blacklist is
+inferred without a concrete contract.
 
 Rule scope:
 
@@ -691,20 +771,20 @@ requiring broad suppressions.
 
 ## Rule-family completion matrix
 
-| Family | First implementation | Default eligibility |
-| --- | --- | --- |
-| Device language and runtime | Step 3 | Proven target violation |
-| Application and lifecycle | Step 4 | Proven callback or entry violation |
-| Optional capabilities | Step 5 | Local or bounded proven flow |
-| Borrowed callback data | Step 6 | Definite escape only |
-| Errors, results, and bounds | Step 7 | SDK-specific contract only |
-| Local ownership and retention | Step 8 | Definite state transition |
-| Interprocedural ownership | Step 9 | After external precision evidence |
-| Frame and memory risk | Step 10 | Performance severity, measured tuning |
-| Workspace, manifest, and assets | Step 11 | Deterministic static validation |
-| Safe fixes | Step 12 | Semantics-preserving and idempotent |
-| Incremental and LSP delivery | Steps 13–14 | Batch-equivalent diagnostics |
-| VS Code and GoLand | Step 15 | Same engine and rule identities |
+| Family                          | First implementation | Default eligibility                   |
+| ------------------------------- | -------------------- | ------------------------------------- |
+| Device language and runtime     | Step 3               | Proven target violation               |
+| Application and lifecycle       | Step 4               | Proven callback or entry violation    |
+| Optional capabilities           | Step 5               | Local or bounded proven flow          |
+| Borrowed callback data          | Step 6               | Definite escape only                  |
+| Errors, results, and bounds     | Step 7               | SDK-specific contract only            |
+| Local ownership and retention   | Step 8               | Definite state transition             |
+| Interprocedural ownership       | Step 9               | After external precision evidence     |
+| Frame and memory risk           | Step 10              | Performance severity, measured tuning |
+| Workspace, manifest, and assets | Step 11              | Deterministic static validation       |
+| Safe fixes                      | Step 12              | Semantics-preserving and idempotent   |
+| Incremental and LSP delivery    | Steps 13–14          | Batch-equivalent diagnostics          |
+| VS Code and GoLand              | Step 15              | Same engine and rule identities       |
 
 ## Milestones
 

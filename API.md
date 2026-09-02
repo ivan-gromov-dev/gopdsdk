@@ -603,6 +603,43 @@ failure releases the operation slot. Neither capability may re-enter game code
 from a native callback, and queued or late callbacks after termination are
 suppressed.
 
+## Device source compatibility
+
+Device compilation uses TinyGo and the Cortex-M7 target, with its `linux/arm`,
+`tinygo`, `baremetal`, and `cortexm` build selection plus gopdsdk's `qemu` tag.
+The analyzer loads host Go packages; `device-build-constraint` is informational
+when a selected file cannot match those fixed device constraints. It does not
+prove the absence of an alternative device implementation. Unknown application
+and Go-version tags are not assumed false.
+
+Go assembler `TEXT` implementations in `.s` files do not provide TinyGo
+function bodies. `device-go-assembly` identifies matching bodyless Go
+declarations in the selected package; it excludes assembly files with known
+incompatible device constraints. This is not a ban on native ARM assembly.
+The declaration and symbol matching follows the
+[Go assembler syntax](https://go.dev/doc/asm).
+
+`device-compiler-directive` diagnoses `//go:linkname` aliases to public package
+functions already forbidden by the device symbol rules. It does not ban all
+directives, private linker names, or `go:linkname` itself. Generic code is also
+not generally forbidden: `device-channel` diagnoses channel type arguments,
+including inferred and imported named channel types.
+
+`device-panic-cleanup` warns when local control flow permits an explicit builtin
+`panic` after a deferred call has been registered. It is a possible-path warning,
+not proof that cleanup is required or that branch conditions are jointly
+feasible. Normal-return defer remains supported. Implicit runtime panics,
+panics in callees, and deferred panics are outside this rule's current scope.
+
+The device checker follows statically resolved dependency calls and package
+initialization for goroutines, channels, `select`, `recover`, forbidden imports,
+and forbidden runtime symbols. It reports the shortest known path, following
+generic calls and immutable local function/closure aliases. Uncalled closure
+bodies do not contribute to those paths. Reassigned function values, globals,
+parameters, and unresolved interface calls are outside that proof. Audited
+`time`, `reflect`, and `runtime` APIs are terminal contracts rather than paths
+through the host standard library's implementation.
+
 ## Device Go subset
 
 The accepted device profile is sequential Go with TinyGo conservative GC,
@@ -634,6 +671,11 @@ unsupported, as do `recover`, finalizers, application cgo, and application
 runtime-control hooks. Prefer direct typed code or generated accessors where a
 static implementation is practical. Reflection allocation and memory bounds are
 workload-specific and require measurement before use in an update hot path.
+
+The linked-symbol audit only sees symbols retained in the ELF. TinyGo can inline
+an unsupported operation such as `reflect.Value.Call` into a panic trap, leaving
+no symbol for that audit to reject. The source analyzer still reports the
+unsupported API; successful packaging does not establish its runtime support.
 
 Pure `time.Duration` value, parsing, and formatting operations are supported.
 This does not enable `time.Now`, sleep, timers, or tickers; use Playdate-clock

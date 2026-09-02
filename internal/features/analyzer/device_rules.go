@@ -13,6 +13,7 @@ import (
 // callers can select and suppress stable rule IDs independently.
 func deviceRuleRegistrations() []Registration {
 	providers := StandardProviders()
+	reachability := newDeviceReachabilityProvider()
 	return []Registration{
 		{RuleID: "device-goroutine", Analyzer: syntaxRule("devicegoroutine", providers, func(pass *analysis.Pass, node ast.Node) {
 			if statement, ok := node.(*ast.GoStmt); ok {
@@ -26,8 +27,8 @@ func deviceRuleRegistrations() []Registration {
 			}
 		})},
 		{RuleID: "device-time-runtime", Analyzer: syntaxRule("devicetimeruntime", providers, reportTimeUse)},
-		{RuleID: "device-encoding-json", Analyzer: importRule("deviceencodingjson", providers, "encoding/json", "encoding/json is unavailable on device; use playdate/json")},
-		{RuleID: "device-fmt", Analyzer: importRule("devicefmt", providers, "fmt", "fmt is unavailable on device; use strconv and bounded writers")},
+		{RuleID: "device-encoding-json", Analyzer: deviceReachabilityRule("deviceencodingjson", reachability, "device-encoding-json")},
+		{RuleID: "device-fmt", Analyzer: deviceReachabilityRule("devicefmt", reachability, "device-fmt")},
 		{RuleID: "device-recover", Analyzer: callRule("devicerecover", providers, func(pass *analysis.Pass, call *ast.CallExpr) {
 			if objectName(pass, call.Fun, "builtin", "recover") {
 				pass.Reportf(call.Fun.Pos(), "recover cannot recover a device panic")

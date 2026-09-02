@@ -175,6 +175,51 @@ func TestDeviceRuleCommandSuppressionAndBothTargets(t *testing.T) {
 	assertDeviceCheck(t, options, []string{"check", "--target", "both", "--rules", "device-goroutine"}, ExitSuccess, "suppressed inline: fixture exception")
 }
 
+func TestDeviceRulesReportShortestKnownDependencyCallPaths(t *testing.T) {
+	root := checkFixture(t, `package game
+import "example.com/game/dependency"
+func run() {
+	_ = dependency.Safe(1)
+	_ = dependency.Format(2)
+	_ = dependency.Decode(nil)
+}
+`)
+	if err := os.MkdirAll(filepath.Join(root, "dependency"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeAnalyzerFixture(t, root, "dependency/dependency.go", `package dependency
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+)
+func Safe(value int) string { return strconv.Itoa(value) }
+func format(value int) string { return fmt.Sprint(value) }
+func Format(value int) string { return format(value) }
+func Decode(data []byte) error { return json.Unmarshal(data, new(any)) }
+`)
+	options, err := DefaultCheckOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	options.ModuleRoot = root
+	var stdout bytes.Buffer
+	err = RunCheck(context.Background(), []string{"check", "--target", "device", "--rules", "device-fmt,device-encoding-json", "."}, &stdout, &bytes.Buffer{}, options)
+	var commandError *CommandError
+	if !errors.As(err, &commandError) || commandError.Code != ExitFindings {
+		t.Fatalf("RunCheck() = %v", err)
+	}
+	output := stdout.String()
+	for _, wanted := range []string{"dependency.Format", "dependency.format", "fmt.Sprint", "dependency.Decode", "encoding/json.Unmarshal"} {
+		if !strings.Contains(output, wanted) {
+			t.Errorf("output missing %q:\n%s", wanted, output)
+		}
+	}
+	if strings.Contains(output, "dependency.Safe") || strings.Count(output, "call reaches unavailable device feature") != 2 {
+		t.Fatalf("unexpected reachable-path diagnostics:\n%s", output)
+	}
+}
+
 func assertDeviceCheck(t *testing.T, options CheckOptions, arguments []string, wantCode int, contains string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer

@@ -14,7 +14,10 @@ requires an explicitly documented exception.
   goroutines, channels, `select`, clock and scheduling APIs, `fmt`,
   `encoding/json`, panic recovery and finalizers, application cgo, unsupported
   reflection, and runtime-control hooks while accepting the documented
-  `time.Duration` and reflection subsets.
+  `time.Duration` and reflection subsets. Statically resolved calls through
+  dependency wrappers now carry the shortest known path to `fmt` or
+  `encoding/json`, and device cgo diagnostics no longer depend on a host C
+  compiler successfully loading the application package.
 
 ## v1.0.0 (2026-08-18)
 

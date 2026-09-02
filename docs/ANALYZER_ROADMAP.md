@@ -314,13 +314,20 @@ device rules for goroutines, channel syntax and operations, `select`, runtime
 `encoding/json`, `recover`, finalizers, application cgo imports, reflection
 outside the audited subset, and the documented unavailable runtime-control
 hooks. Symbol rules diagnose references as well as direct calls, so assigning
-an unavailable function value cannot evade the check. Command-level Windows
-fixtures cover generated-source inclusion, build tags, test variants, inline
-suppression, and combined Simulator/device target selection. The maintained
-examples produce no default device findings. This is local unit and
-external-consumer CLI evidence only; native macOS/Linux CI, transitive reachable
-paths, the remaining source/toolchain compatibility rules, and device-build
-linker comparisons remain open.
+an unavailable function value cannot evade the check. A shared fact provider
+also propagates the shortest statically known path through local and exported
+dependency functions to `fmt` and `encoding/json`; unused safe exports do not
+produce findings, and a forbidden package is the terminal cause rather than a
+source of secondary diagnostics from its implementation. Device cgo loading is
+independent of the host C compiler and preserves Go build-tag selection.
+Command-level Windows fixtures cover generated-source inclusion, build tags,
+test variants, inline suppression, and combined Simulator/device target
+selection. The maintained game-example packages produce no default device
+findings; host-only generators under their internal directories are outside
+that device-analysis scope. This is
+local unit and external-consumer CLI evidence only; native macOS/Linux CI,
+dynamic and interface call paths, the remaining source/toolchain compatibility
+rules, and device-build linker comparisons remain open.
 
 Rule scope:
 

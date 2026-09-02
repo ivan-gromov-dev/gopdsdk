@@ -7,6 +7,38 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed the local implementation and acceptance matrix for the fifteen
+  Step 3 device rules on 2026-09-02. The real external-consumer CLI tests cover
+  positive/negative sources, generated-source and build-tag inclusion/exclusion,
+  test variants, target selection, inline suppression, and baseline identity
+  for every rule. Cgo-only packages are now retained under `./...` using
+  temporary in-memory overlays, without a C compiler or source-file writes.
+  Dependency call and initialization paths now also carry goroutine, channel,
+  `select`, and `recover` violations. Uncalled closures remain excluded.
+- Added opt-in `TestAnalyzerDeviceBuildAcceptance` comparisons using official
+  SDK 3.1.1, TinyGo 0.41.1/LLVM 20.1.1, and Arm GCC 15.3.1 on Windows:
+  the valid normal-defer/Duration fixture produced an ARM hard-float ELF and
+  PDX (280,052 bytes static RAM; 1,331,404-byte ELF; 59,809-byte PDX);
+  Go assembly failed ARM linking with an undefined `Fast` reference; and
+  `reflect.MakeSlice` failed the linked-symbol audit. An unsupported
+  `reflect.Value.Call` fixture was diagnosed by the analyzer but packaged
+  successfully because TinyGo eliminated its symbol in favor of a panic trap.
+  That discrepancy is covered explicitly and does not establish runtime support.
+  All four acceptance cases passed on 2026-09-02; JSON reports, sources, and
+  build logs are retained in the local analyzer evidence cache. The earlier
+  reflection fixture initially failed its expected-rejection assertion and was
+  separated into the trap and retained-symbol cases. These are SDK/device-build
+  results, without Simulator execution, deployment, device-log inspection,
+  hardware execution, or GC soak. Native three-platform CI remains outstanding
+  for these uncommitted changes.
+- Added four device source rules: `device-panic-cleanup` warns about explicit
+  panic with potentially pending deferred calls; `device-go-assembly` identifies
+  bodyless declarations backed by selected Go assembly; `device-compiler-directive`
+  detects linkname aliases to forbidden public functions; and informational
+  `device-build-constraint` identifies host-selected files excluded by fixed
+  device constraints. Channel diagnostics now cover generic type arguments,
+  including inferred and imported named channel types. These are bounded
+  checks, not blanket prohibitions on defer, generics, or compiler directives.
 - Changed the canonical module, import, documentation, release, and repository
   paths to `github.com/ivan-gromov-dev/gopdsdk` after the GitHub account rename.
 - Began the first production static-analyzer device rule pack. `gopdsdk check`
@@ -18,6 +50,42 @@ requires an explicitly documented exception.
   dependency wrappers now carry the shortest known path to `fmt` or
   `encoding/json`, and device cgo diagnostics no longer depend on a host C
   compiler successfully loading the application package.
+- Extended device dependency-call diagnostics to package variable initializers
+  and package-level function literals. Parenthesized calls, explicit generic
+  function instantiations, and methods on instantiated generic types now retain
+  their static dependency paths to `fmt` and `encoding/json`. Windows unit
+  regression coverage checks source locations, safe calls, function references,
+  and unresolved interface calls.
+- Added device initialization-path diagnostics at imports: dependency `init`
+  functions and package variable initializers propagate their shortest known
+  static paths to `fmt` and `encoding/json` through package facts, including
+  blank, renamed, and dot imports. Creating or returning a closure no longer
+  adds its uncalled body to a function's reachability fact; immediately invoked
+  literals remain followed. On 2026-09-02, Windows unit and command-level
+  regression tests, `go test ./...`, `go vet ./...`, and the device-profile CLI
+  check of maintained game examples passed. Subsequent SDK/device-build
+  comparisons are recorded above; physical-device acceptance was not run.
+- Device reachability now follows declaration-initialized local function
+  variables with a single write and no address escape, including alias chains,
+  generic functions, and concrete method values. These resolved calls also
+  participate in dependency function and initialization facts. Reassigned,
+  addressed, global, parameter, and interface values remain unresolved.
+  Windows regression coverage checks captured writes, range assignments,
+  shadowed names, unused aliases, and safe calls.
+- Device reachability follows invoked local closures held in immutable
+  declaration-initialized variables, including alias chains, nested closures,
+  and deferred calls. Closure calls contribute to dependency function and
+  initialization facts, while merely creating or returning a closure does not.
+  Each reached closure body is visited once per traversal. Windows regression
+  coverage checks `fmt` and `encoding/json` paths, repeated nested calls,
+  unused/returned closures, and reassigned or addressed closure variables.
+- Extended dependency-call and initialization paths to forbidden `time`,
+  reflection, finalizer, and runtime-control functions. These paths use the
+  same symbol policy as direct diagnostics. Audited `time`, `reflect`, and
+  `runtime` APIs form terminal boundaries so host implementation details do not
+  invalidate allowed device operations. Windows regression coverage checks
+  per-rule selection, wrappers, aliases, closures, dependency initialization,
+  and allowed duration, reflection, and garbage-collection operations.
 
 ## v1.0.0 (2026-08-18)
 

@@ -116,6 +116,14 @@ func LoadPackages(ctx context.Context, config LoadConfig) (Snapshot, error) {
 	if len(config.BuildTags) != 0 {
 		packageConfig.BuildFlags = append(packageConfig.BuildFlags, "-tags="+strings.Join(config.BuildTags, ","))
 	}
+	var cgoStubs map[string]bool
+	if config.Target == TargetDevice {
+		cgoStubs, err = includeCgoOnlyPackages(packageConfig, patterns)
+		if err != nil {
+			return Snapshot{}, err
+		}
+		overlay = packageConfig.Overlay
+	}
 	loaded, err := packages.Load(packageConfig, patterns...)
 	if err != nil {
 		if contextErr := ctx.Err(); contextErr != nil {
@@ -127,9 +135,13 @@ func LoadPackages(ctx context.Context, config LoadConfig) (Snapshot, error) {
 		return Snapshot{}, contextErr
 	}
 	for _, loadedPackage := range loaded {
+		removeCgoStubSources(loadedPackage, cgoStubs)
 		if err := includeIgnoredCgoSources(loadedPackage, overlay, config.BuildTags); err != nil {
 			return Snapshot{}, err
 		}
+	}
+	for name := range cgoStubs {
+		delete(overlay, name)
 	}
 	sort.Slice(loaded, func(i, j int) bool { return loaded[i].ID < loaded[j].ID })
 	snapshot := Snapshot{ModuleRoot: filepath.ToSlash(root), Target: config.Target, Loaded: loaded, overlay: overlay}

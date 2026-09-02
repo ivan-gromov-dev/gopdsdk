@@ -163,6 +163,36 @@ excluded from owned-acquisition leak checks because application termination
 performs aggregate cleanup. General retained-callback graphs, public fields,
 loops, and cross-package ownership remain outside these local proofs.
 
+## Capability diagnostics
+
+`gopdsdk check` enables these rules for shared, Simulator, and device analysis:
+
+| Rule | Default | Meaning |
+| --- | --- | --- |
+| `capability-unchecked-assertion` | error | A single-value assertion to an optional capability has no proven successful guard. |
+| `capability-unproven-assertion` | warning, likely confidence | Another function checks this capability, but the analyzer cannot prove that check protects this assertion. |
+| `capability-impossible-assertion` | error | A single-value assertion is known to fail if reached, including a failed guard, nil interface, or incompatible boxed concrete value. |
+| `capability-redundant-check` | information | A comma-ok check has an already established result on this path. |
+
+Checks recognize dominating comma-ok guards, early returns, type switches,
+boolean negation/equality, compatible interface wrappers, and simple local
+boolean helpers up to eight inference edges. Read-only closure captures can
+inherit an enclosing guard when their captured cell has a single initialization
+and no address escape. SSA value identity invalidates facts after reassignment;
+unknown predicates, mutable captures, and cross-package helpers do not establish
+a successful guard. Helpers returning a checked capability plus an error remain
+valid without another type assertion. Known checked failures should use the
+application's unsupported-capability fallback. No automatic fixes are generated.
+Checks in other functions, including a game's `Init`, may require lifecycle or
+caller facts that are not yet available. Such related checks produce the
+explicitly lower-confidence warning rather than a proven error. That warning
+still meets the CLI's default warning failure threshold.
+
+Capability types come from the loaded SDK package, including re-exporting
+wrappers, rather than the installed official SDK or the analyzer's binary.
+Missing Go API symbols remain package-load errors. These checks do not yet
+validate an official SDK version or a declared compatibility floor.
+
 ## Context capabilities
 
 `playdate.Context` composes five smaller interfaces:

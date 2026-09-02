@@ -481,6 +481,30 @@ incomplete call-path conclusions remain warnings or silent.
 
 ### Step 5 — Add optional-capability and availability facts
 
+In progress (2026-09-02): the production registry enables unchecked and
+provably impossible optional-capability assertions as errors, and redundant or
+contradictory comma-ok checks as information, on all analysis targets. A related
+check in another function lowers an unresolved assertion to a `likely` warning;
+the checker does not claim to prove cross-callback protection from `Init` alone.
+Dominator
+facts cover early exits, type switches, boolean guards, local predicate helpers,
+interface wrappers, loops, and read-only captured values. Reassignment, unknown
+predicates, mutable captures, and opaque helpers do not preserve inferred guards.
+No potentially panicking quick fixes are generated.
+
+Unit fixtures cover the local inference and invalidation cases. External CLI
+fixtures verify JSON findings, failure exits, suppression, and shared/Simulator/
+device selection. Full repository tests and vet pass on Windows. This evidence
+does not establish Simulator or hardware readiness.
+The repository examples expose eleven such related-check warnings; resolving
+their lifecycle/caller provenance remains part of this step's precision work.
+
+Remaining: explicit version/target availability metadata, configured official
+SDK and compatibility-floor checks, multi-version acceptance fixtures, and
+bounded exported facts for cross-package capability helpers. Currently the
+loaded Go package supplies type identities; missing API symbols remain Go load
+errors, and a verified toolchain version is not treated as an API minimum.
+
 Model the optional slices exposed through `playdate.Context`.
 
 Rule scope:

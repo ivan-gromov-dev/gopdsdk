@@ -122,16 +122,10 @@ func checkTerminationResources(function *ssa.Function, result applicationFinding
 				understood := false
 				if comparison, ok := branch.Cond.(*ssa.BinOp); ok {
 					left, right := comparison.X, comparison.Y
-					if right == event {
-						left, right = right, left
-					}
-					if left == event {
-						if value, ok := right.(*ssa.Const); ok && value.Value != nil {
-							understood = true
-							matches := constant.Compare(terminate, comparison.Op, value.Value)
-							if matches != (index == 0) {
-								continue
-							}
+					if truth := applicationScalar(comparison, map[ssa.Value]constant.Value{event: terminate}); truth != nil && truth.Kind() == constant.Bool {
+						understood = true
+						if constant.BoolVal(truth) != (index == 0) {
+							continue
 						}
 					}
 					if nilSSA(left) {
@@ -170,7 +164,7 @@ func ownedAcquisition(call *ssa.CallCommon) bool {
 		{"Graphics", "NewBitmap"}, {"Graphics", "LoadBitmap"}, {"FontGraphics", "LoadFont"},
 		{"Sprites", "NewSprite"}, {"Audio", "LoadSoundEffect"}, {"Audio", "LoadFilePlayer"},
 		{"Videos", "LoadVideo"}, {"FileSystem", "OpenFile"},
-		{"CallbackAudio", "NewPCMCallbackSource"}, {"Microphones", "StartMicrophoneRecording"},
+		{"CallbackAudio", "NewPCMCallbackSource"},
 		{"GeneratorSynthesizers", "NewGeneratorSynth"},
 	} {
 		if callMethod(call, playdatePackage, operation.receiver, operation.method) {

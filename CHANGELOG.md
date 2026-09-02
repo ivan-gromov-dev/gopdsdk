@@ -16,9 +16,14 @@ requires an explicitly documented exception.
   consumer CLI entry checks cover receiver shapes, helpers, generic factories,
   unknown dispatch, successful cleanup, and all target selections. Windows
   targeted race tests and `go vet ./...` pass; repository examples produce no
-  application/lifetime findings. Step 4 remains open for pre-existing ownership
-  and callback-registration facts and generated-entry acceptance. No new native
-  SDK or hardware acceptance is claimed.
+  application/lifetime findings. The bounded local Step 4 pack also traces
+  private owned fields and PCM callback owners into termination, native callback
+  update boundaries, and scalar/lifecycle arguments through local helpers.
+  Generated factory-expression tests execute real `NewApplication` lifecycle
+  dispatch with a substituted native context and hook. Microphone aggregate
+  cleanup is excluded from leak reports. General ownership/retention graphs and
+  opaque aliases remain outside this local acceptance scope. No new native SDK
+  or hardware acceptance is claimed.
 
 - Completed the local implementation and acceptance matrix for the fifteen
   Step 3 device rules on 2026-09-02. The real external-consumer CLI tests cover

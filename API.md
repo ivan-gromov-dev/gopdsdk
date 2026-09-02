@@ -130,20 +130,22 @@ default errors; unresolved dispatch and ownership do not produce an error.
 | --- | --- |
 | `application-entry` | A package containing `pdxinfo` is `main` or lacks `func New() playdate.Game`. Libraries without `pdxinfo` do not require a factory. |
 | `application-lifecycle-shape` | A concrete Game returned by `New` or a local factory helper has `HandleLifecycle` but its actual pointer/value method set does not implement `LifecycleGame`. |
-| `application-scheduler-update-boundary` | A local static call path from Game `Init` or `HandleLifecycle` reaches `Scheduler.Update`. |
+| `application-scheduler-update-boundary` | A local static call path from Game `Init`, `HandleLifecycle`, or a registered native sprite/audio/microphone callback reaches `Scheduler.Update`. |
 | `application-nested-stencil` | A registered stencil callback reaches another `WithStencil` through local static calls. |
 | `application-nested-scheduler` | A scheduled closure calls `Update` on the same captured scheduler, with a locally stable capture. |
 | `application-sprite-callback-close` | A sprite callback closes a participating sprite parameter, directly or through a local helper. |
-| `application-termination-resource-leak` | A local owned acquisition succeeds on a visible termination path and reaches return without cleanup or transfer. |
+| `application-termination-resource-leak` | A local owned acquisition or a proven non-nil private owned field is lost on a visible termination path without cleanup or transfer. |
 | `lifetime-framebuffer-escape` | A registered framebuffer callback stores its view or byte slice outside the callback. |
 | `lifetime-bitmap-data-escape` | A registered bitmap-data callback stores its view, image bytes, or mask bytes outside the callback. |
 | `lifetime-microphone-samples-escape` | A recording callback retains its samples outside the callback. |
 | `lifetime-audio-render-buffer-escape` | A PCM or generator render callback retains its output slices outside the callback. |
 
 Game method mismatches that already prevent Go type checking remain package-load
-errors. The analyzer follows at most eight local static call edges; unknown
-interface dispatch and arbitrary aliases are outside these proofs. Conditional
-helper blocks are omitted when argument facts are unavailable. Copies of
+errors. The analyzer follows at most eight local static call edges and 4096
+block visits per root, carrying scalar arguments and the loaded lifecycle-event
+constants through helpers. Unknown interface dispatch and arbitrary aliases are
+outside these proofs. Conditional helper blocks are omitted when argument facts
+are unavailable; their unavoidable continuation remains eligible. Copies of
 transient bytes into owned storage are allowed. The current public contract does
 not prohibit retaining `Context` itself, so there is no Context-escape rule.
 
@@ -151,9 +153,15 @@ Termination analysis explores at most 256 local path states, using the loaded
 SDK's `LifecycleTerminate` constant and explicit successful acquisition checks.
 Paths with other unresolved conditions are omitted.
 Unknown calls and deferred helpers may perform aggregate cleanup and therefore
-discard ownership knowledge. Handles already stored in game fields at callback
-entry, previously registered callbacks, loops, and cross-package cleanup require
-additional ownership facts and are not diagnosed by this local rule.
+discard ownership knowledge. A private field can establish pre-existing ownership
+only when every visible non-nil write comes directly from an owned constructor,
+no handle/address escapes or opaque uses invalidate it, and a termination guard
+proves the active receiver's field non-nil. This includes owned PCM callback
+sources, whose `Close` releases their registration. A known `Close`, transfer, or
+cleanup helper suppresses this limited field proof. Microphone recording is
+excluded from owned-acquisition leak checks because application termination
+performs aggregate cleanup. General retained-callback graphs, public fields,
+loops, and cross-package ownership remain outside these local proofs.
 
 ## Context capabilities
 

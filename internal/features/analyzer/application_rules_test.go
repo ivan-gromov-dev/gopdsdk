@@ -50,6 +50,37 @@ func TestApplicationRules(t *testing.T) {
 		want         []RuleID
 	}{
 		{"missing entry", "package game", true, []RuleID{"application-entry"}},
+		{"termination reversed comparison", applicationFixture + `func(game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if playdate.LifecyclePause > e { _,err:=c.LoadBitmap("hero"); if err!=nil{return err}; return nil }; return nil }`, false, nil},
+		{"lifecycle helper facts", `package game
+import("github.com/ivan-gromov-dev/gopdsdk/playdate"; "github.com/ivan-gromov-dev/gopdsdk/playdate/schedule")
+type game struct{s *schedule.Scheduler}
+func(g *game) Init(playdate.Context) error{return nil}
+func(g *game) Update(playdate.Context)(bool,error){return true,nil}
+func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent)error{if e==playdate.LifecycleTerminate{helper(g.s,true)};return nil}
+func helper(s *schedule.Scheduler,run bool){if run{s.Update()}}
+`, false, []RuleID{"application-scheduler-update-boundary"}},
+		{"field contradictory guards", ownedFieldFixture + `func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.bitmap==nil { if g.bitmap!=nil { g.bitmap=nil } }; return nil }`, false, []RuleID{"application-termination-resource-leak"}},
+		{"field private transfer", ownedFieldFixture + `var escaped playdate.Bitmap; func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.bitmap!=nil { escaped=g.bitmap; g.bitmap=nil }; return nil }`, false, nil},
+		{"callback owner discarded", ownedCallbackFixture + `func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.source!=nil { g.source=nil }; return nil }`, false, []RuleID{"application-termination-resource-leak"}},
+		{"callback owner closed", ownedCallbackFixture + `func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.source!=nil { return g.source.Close() }; return nil }`, false, nil},
+		{"microphone aggregate cleanup", applicationFixture + `func(game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e!=playdate.LifecycleTerminate{return nil}; m:=c.(playdate.Microphones); _,err:=m.StartMicrophoneRecording(0,func(playdate.MicrophoneSamples)bool{return true}); if err!=nil{return err}; return nil }`, false, nil},
+		{"owned field discarded", ownedFieldFixture + `func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.bitmap!=nil { g.bitmap=nil }; return nil }`, false, []RuleID{"application-termination-resource-leak"}},
+		{"owned field retained", ownedFieldFixture + `func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.bitmap!=nil { return nil }; return nil }`, false, []RuleID{"application-termination-resource-leak"}},
+		{"owned field closed", ownedFieldFixture + `func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.bitmap!=nil { return g.bitmap.Close() }; return nil }`, false, nil},
+		{"owned field cleanup helper", ownedFieldFixture + `func cleanup(b playdate.Bitmap) { b.Close() }; func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.bitmap!=nil { cleanup(g.bitmap); g.bitmap=nil }; return nil }`, false, nil},
+		{"field unknown origin", ownedFieldFixture + `func(g *game) Replace(b playdate.Bitmap) { g.bitmap=b }; func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecycleTerminate && g.bitmap!=nil { g.bitmap=nil }; return nil }`, false, nil},
+		{"field other event", ownedFieldFixture + `func(g *game) HandleLifecycle(c playdate.Context,e playdate.LifecycleEvent) error { if e==playdate.LifecyclePause && g.bitmap!=nil { g.bitmap=nil }; return nil }`, false, nil},
+		{"known helper true", `package game
+import("github.com/ivan-gromov-dev/gopdsdk/playdate"; "github.com/ivan-gromov-dev/gopdsdk/playdate/schedule")
+type game struct{s *schedule.Scheduler}
+func(g *game) Init(playdate.Context) error { helper(g.s,true); return nil }
+func(g *game) Update(playdate.Context)(bool,error){return true,nil}
+func helper(s *schedule.Scheduler,run bool){if run {s.Update()}}
+`, false, []RuleID{"application-scheduler-update-boundary"}},
+		{"native callback scheduler", `package game
+import("github.com/ivan-gromov-dev/gopdsdk/playdate"; "github.com/ivan-gromov-dev/gopdsdk/playdate/schedule")
+func register(s playdate.Sprite, tasks *schedule.Scheduler) { s.SetDrawCallback(func(playdate.Sprite,playdate.Rect,playdate.Rect){tasks.Update()}) }
+`, false, []RuleID{"application-scheduler-update-boundary"}},
 		{"library", "package game", false, nil},
 		{"bad entry", `package game; func New(x int) int { return x }`, true, []RuleID{"application-entry"}},
 		{"lifecycle value", applicationFixture + `func New() playdate.Game { return factory() }; func factory() playdate.Game { return game{} }; func (*game) HandleLifecycle(playdate.Context, playdate.LifecycleEvent) error { return nil }`, true, []RuleID{"application-lifecycle-shape"}},
@@ -203,4 +234,20 @@ import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 type game struct{}
 func (game) Init(playdate.Context) error { return nil }
 func (game) Update(playdate.Context) (bool,error) { return true,nil }
+`
+
+const ownedFieldFixture = `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+type game struct { bitmap playdate.Bitmap }
+func(g *game) Init(c playdate.Context) error { b,err:=c.LoadBitmap("hero"); if err!=nil{return err}; g.bitmap=b; return nil }
+func(g *game) Update(playdate.Context)(bool,error){return true,nil}
+func New()playdate.Game{return &game{}}
+`
+
+const ownedCallbackFixture = `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+type game struct { source playdate.PCMCallbackSource }
+func(g *game) Init(c playdate.Context) error { a:=c.(playdate.CallbackAudio); p,err:=a.NewPCMCallbackSource(nil,true,func(left,right []int16)int{return len(left)}); if err!=nil{return err}; g.source=p; return nil }
+func(g *game) Update(playdate.Context)(bool,error){return true,nil}
+func New()playdate.Game{return &game{}}
 `

@@ -24,6 +24,7 @@ func applicationRuleRegistrations() []Registration {
 		functions := pass.ResultOf[providers.SSA].(*buildssa.SSA).SrcFuncs
 		checkApplicationShape(pass, functions, result)
 		checkApplicationPaths(pass, functions, result)
+		checkApplicationFields(pass, functions, result)
 		return result, PassContext(pass).Err()
 	}}
 	var registrations []Registration
@@ -227,6 +228,13 @@ func checkApplicationPaths(pass *analysis.Pass, functions []*ssa.Function, resul
 					if callback == nil {
 						continue
 					}
+					if nativeApplicationCallback(call) {
+						walkApplicationCalls(callback, 0, make(map[*ssa.Function]bool), func(nested *ssa.CallCommon) {
+							if callMethod(nested, playdatePackage+"/schedule", "Scheduler", "Update") {
+								result.add("application-scheduler-update-boundary", nested.Pos(), "Scheduler.Update runs from a native callback; advance it from Game.Update")
+							}
+						})
+					}
 					if callMethod(call, playdatePackage, "BitmapCompositor", "WithStencil") {
 						walkApplicationCalls(callback, 0, make(map[*ssa.Function]bool), func(nested *ssa.CallCommon) {
 							if callMethod(nested, playdatePackage, "BitmapCompositor", "WithStencil") {
@@ -251,7 +259,7 @@ func checkApplicationPaths(pass *analysis.Pass, functions []*ssa.Function, resul
 					}
 					// A task can only execute during its scheduler's Update. Restrict
 					// re-entry to an identical receiver captured by a closure.
-					for _, method := range []string{"Schedule", "ScheduleAfter", "ScheduleAt", "Every"} {
+					for _, method := range []string{"Schedule", "ScheduleAfter", "ScheduleAt"} {
 						if callMethod(call, playdatePackage+"/schedule", "Scheduler", method) {
 							if converted, ok := argument.(*ssa.ChangeType); ok {
 								argument = converted.X
@@ -271,43 +279,16 @@ func checkApplicationPaths(pass *analysis.Pass, functions []*ssa.Function, resul
 	}
 }
 
-func walkApplicationCalls(function *ssa.Function, depth int, seen map[*ssa.Function]bool, visit func(*ssa.CallCommon)) {
-	if function == nil || depth > 8 || seen[function] {
-		return
-	}
-	seen[function] = true
-	for _, block := range function.Blocks {
-		// Without argument facts, a helper's guarded branch may be impossible
-		// from this caller. Only follow blocks unavoidable on normal return.
-		unavoidable := true
-		for _, exit := range function.Blocks {
-			if len(exit.Succs) == 0 && !block.Dominates(exit) {
-				unavoidable = false
-				break
-			}
-		}
-		if !unavoidable {
-			continue
-		}
-		for _, instruction := range block.Instrs {
-			// A go statement does not execute synchronously in the current boundary.
-			var call *ssa.CallCommon
-			switch instruction := instruction.(type) {
-			case *ssa.Call:
-				call = instruction.Common()
-			case *ssa.Defer:
-				call = instruction.Common()
-			}
-			if call == nil {
-				continue
-			}
-			visit(call)
-			callee := call.StaticCallee()
-			if callee != nil && callee.Pkg == function.Pkg {
-				walkApplicationCalls(callee, depth+1, seen, visit)
-			}
+func nativeApplicationCallback(call *ssa.CallCommon) bool {
+	for _, operation := range []struct{ receiver, method string }{
+		{"Sprite", "SetUpdateCallback"}, {"Sprite", "SetDrawCallback"}, {"Sprite", "SetCollisionResponseCallback"},
+		{"CallbackAudio", "NewPCMCallbackSource"}, {"GeneratorSynthesizers", "NewGeneratorSynth"}, {"Microphones", "StartMicrophoneRecording"},
+	} {
+		if callMethod(call, playdatePackage, operation.receiver, operation.method) {
+			return true
 		}
 	}
+	return false
 }
 
 func scopedCallbackRule(call *ssa.CallCommon, parameter *ssa.Parameter) RuleID {

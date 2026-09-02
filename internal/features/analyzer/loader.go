@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go/ast"
+	"go/build"
 	"go/build/constraint"
+	"go/parser"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -106,6 +110,9 @@ func LoadPackages(ctx context.Context, config LoadConfig) (Snapshot, error) {
 		Overlay:    overlay,
 		BuildFlags: []string{"-mod=readonly"},
 	}
+	if config.Target == TargetDevice {
+		packageConfig.Env = environmentWith("CGO_ENABLED", "0")
+	}
 	if len(config.BuildTags) != 0 {
 		packageConfig.BuildFlags = append(packageConfig.BuildFlags, "-tags="+strings.Join(config.BuildTags, ","))
 	}
@@ -119,12 +126,82 @@ func LoadPackages(ctx context.Context, config LoadConfig) (Snapshot, error) {
 	if contextErr := ctx.Err(); contextErr != nil {
 		return Snapshot{}, contextErr
 	}
+	for _, loadedPackage := range loaded {
+		if err := includeIgnoredCgoSources(loadedPackage, overlay, config.BuildTags); err != nil {
+			return Snapshot{}, err
+		}
+	}
 	sort.Slice(loaded, func(i, j int) bool { return loaded[i].ID < loaded[j].ID })
 	snapshot := Snapshot{ModuleRoot: filepath.ToSlash(root), Target: config.Target, Loaded: loaded, overlay: overlay}
 	for _, loadedPackage := range loaded {
 		snapshot.Packages = append(snapshot.Packages, normalizePackage(root, config.Target, overlay, loadedPackage))
 	}
 	return snapshot, nil
+}
+
+func environmentWith(name, value string) []string {
+	prefix := strings.ToUpper(name) + "="
+	result := make([]string, 0, len(os.Environ())+1)
+	for _, entry := range os.Environ() {
+		if !strings.HasPrefix(strings.ToUpper(entry), prefix) {
+			result = append(result, entry)
+		}
+	}
+	return append(result, name+"="+value)
+}
+
+func includeIgnoredCgoSources(loaded *packages.Package, overlay map[string][]byte, buildTags []string) error {
+	buildContext := build.Default
+	buildContext.CgoEnabled = true
+	buildContext.BuildTags = append([]string(nil), buildTags...)
+	buildContext.OpenFile = func(name string) (io.ReadCloser, error) {
+		if content := overlay[filepath.Clean(name)]; content != nil {
+			return io.NopCloser(bytes.NewReader(content)), nil
+		}
+		return os.Open(name)
+	}
+	compiled := make(map[string]bool, len(loaded.CompiledGoFiles))
+	for _, name := range loaded.CompiledGoFiles {
+		compiled[filepath.Clean(name)] = true
+	}
+	for _, name := range loaded.IgnoredFiles {
+		name = filepath.Clean(name)
+		if compiled[name] {
+			continue
+		}
+		content := overlay[name]
+		if content == nil {
+			var err error
+			content, err = os.ReadFile(name)
+			if err != nil {
+				return fmt.Errorf("read ignored Go source %q: %w", name, err)
+			}
+		}
+		file, err := parser.ParseFile(loaded.Fset, name, content, parser.ImportsOnly)
+		if err != nil {
+			continue
+		}
+		if !astFileImports(file, "C") {
+			continue
+		}
+		matches, err := buildContext.MatchFile(filepath.Dir(name), filepath.Base(name))
+		if err != nil || !matches {
+			continue
+		}
+		loaded.CompiledGoFiles = append(loaded.CompiledGoFiles, name)
+		loaded.Syntax = append(loaded.Syntax, file)
+		compiled[name] = true
+	}
+	return nil
+}
+
+func astFileImports(file *ast.File, path string) bool {
+	for _, spec := range file.Imports {
+		if spec.Path.Value == `"`+path+`"` {
+			return true
+		}
+	}
+	return false
 }
 
 func validateLoadConfig(config LoadConfig) (string, error) {

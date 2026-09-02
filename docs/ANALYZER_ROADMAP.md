@@ -705,20 +705,20 @@ requiring broad suppressions.
 
 ## Rule-family completion matrix
 
-| Family | First implementation | Default eligibility |
-| --- | --- | --- |
-| Device language and runtime | Step 3 | Proven target violation |
-| Application and lifecycle | Step 4 | Proven callback or entry violation |
-| Optional capabilities | Step 5 | Local or bounded proven flow |
-| Borrowed callback data | Step 6 | Definite escape only |
-| Errors, results, and bounds | Step 7 | SDK-specific contract only |
-| Local ownership and retention | Step 8 | Definite state transition |
-| Interprocedural ownership | Step 9 | After external precision evidence |
-| Frame and memory risk | Step 10 | Performance severity, measured tuning |
-| Workspace, manifest, and assets | Step 11 | Deterministic static validation |
-| Safe fixes | Step 12 | Semantics-preserving and idempotent |
-| Incremental and LSP delivery | Steps 13–14 | Batch-equivalent diagnostics |
-| VS Code and GoLand | Step 15 | Same engine and rule identities |
+| Family                          | First implementation | Default eligibility                   |
+| ------------------------------- | -------------------- | ------------------------------------- |
+| Device language and runtime     | Step 3               | Proven target violation               |
+| Application and lifecycle       | Step 4               | Proven callback or entry violation    |
+| Optional capabilities           | Step 5               | Local or bounded proven flow          |
+| Borrowed callback data          | Step 6               | Definite escape only                  |
+| Errors, results, and bounds     | Step 7               | SDK-specific contract only            |
+| Local ownership and retention   | Step 8               | Definite state transition             |
+| Interprocedural ownership       | Step 9               | After external precision evidence     |
+| Frame and memory risk           | Step 10              | Performance severity, measured tuning |
+| Workspace, manifest, and assets | Step 11              | Deterministic static validation       |
+| Safe fixes                      | Step 12              | Semantics-preserving and idempotent   |
+| Incremental and LSP delivery    | Steps 13–14          | Batch-equivalent diagnostics          |
+| VS Code and GoLand              | Step 15              | Same engine and rule identities       |
 
 ## Milestones
 

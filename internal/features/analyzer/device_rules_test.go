@@ -76,6 +76,29 @@ func TestDeviceRulePackAcceptsDocumentedSubsetAndOtherTargets(t *testing.T) {
 	}
 }
 
+func TestDeviceCgoRulePrecedesToolchainLoadFailure(t *testing.T) {
+	options, err := DefaultCheckOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := LoadPackages(context.Background(), LoadConfig{
+		ModuleRoot: contractFixtureRoot(), Patterns: []string{"./noncompliant"}, BuildTags: []string{"analyzer_cgo"}, Target: TargetDevice,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshotHasLoadErrors(snapshot) {
+		t.Fatalf("device cgo preflight left load errors: %+v", snapshot.Packages)
+	}
+	result, err := options.Registry.Run(context.Background(), snapshot, RuleSelection{IDs: []RuleID{"device-cgo"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Findings) != 1 || result.Findings[0].RuleID != "device-cgo" || !strings.HasSuffix(result.Findings[0].Position, "noncompliant/cgo.go:6:8") {
+		t.Fatalf("cgo findings = %+v", result.Findings)
+	}
+}
+
 func TestDefaultCheckOptionsRegistersEveryInitialDeviceRule(t *testing.T) {
 	options, err := DefaultCheckOptions()
 	if err != nil {

@@ -416,6 +416,41 @@ receive actionable device-compatibility diagnostics with stable identifiers.
 
 ### Step 4 — Add application-shape and lifecycle rules
 
+Complete for the bounded local rule pack (2026-09-02): eleven application and transient-view rules are
+registered as default errors on all three analysis targets. Entry recognition
+uses the build's `pdxinfo` marker; lifecycle checks use actual factory return
+types, including pointer/value method sets, embedding, and local factories.
+SSA supplies bounded local call paths, registered callback identities, stable
+scheduler captures, and transient-view identity propagation. A bounded local
+termination analysis checks successful owned acquisitions and recognizes direct
+close/transfer, remaining silent when a helper may perform aggregate cleanup.
+Private fields with exclusively owned constructor origins now support proofs
+about resources already live at termination, including owned PCM callback
+registrations. Unknown aliases and uses invalidate that proof. Native sprite,
+PCM, generator, and microphone callbacks are update-boundary roots; scalar
+arguments and loaded lifecycle-event constants guide bounded helper traversal.
+
+Unit fixtures cover positive and negative rules, embedding, generic factories,
+unknown interface dispatch, local helpers, copied data, event filtering, and
+aggregate cleanup. External-consumer CLI tests verify entry errors and exit 1
+for shared, Simulator, and device analysis targets. Windows targeted race tests
+and `go vet ./...` pass; the application/lifetime check over repository examples
+reports no findings. These are static-analysis checks, not native SDK execution
+or physical-device acceptance.
+
+Generated-factory acceptance extracts the application factory expression from
+the actual rendered Simulator template and executes it through `NewApplication`,
+initialization, update, and termination. Pointer/value lifecycle delivery agrees
+with analyzer findings. The test substitutes the native context and registration
+hook; it is Go runtime wiring evidence, not full native bridge acceptance.
+
+The local exit criterion does not imply a complete ownership graph: public
+fields, opaque aliases, general retained registrations, and cross-package
+ownership stay silent pending the later ownership/retention work. Microphone
+recording recognizes runtime aggregate termination cleanup. The public API does
+not currently prohibit retaining `Context` itself; only documented transient
+views support an escape error without a new normative contract.
+
 Teach the analyzer the gopdsdk game entry and callback model.
 
 Rule scope:
@@ -445,6 +480,34 @@ Exit criterion: proven application and lifecycle violations are default errors;
 incomplete call-path conclusions remain warnings or silent.
 
 ### Step 5 — Add optional-capability and availability facts
+
+In progress (updated 2026-09-04): the production registry enables unchecked and
+provably impossible optional-capability assertions as errors, and redundant or
+contradictory comma-ok checks as information, on all analysis targets. A related
+check on an unresolved path remains a `likely` warning. Dominator facts cover
+early exits, type switches, boolean guards, local predicate helpers, interface
+wrappers, loops, and read-only captured values. Bounded caller facts cover
+private helpers only when every static caller supplies the proven capability.
+Application lifecycle facts connect a successful `Init` requirement to
+`Update` or `HandleLifecycle` only for the concrete game returned by `New`;
+explicit manual callback calls, escaped helpers, mutable sentinels, reassignment,
+unknown predicates, mutable captures, and opaque helpers remain unproven. A
+successful fallback may be excluded when a single private state field guards the
+later callback assertion. No potentially panicking quick fixes are generated.
+
+Unit fixtures cover local inference, caller and lifecycle propagation, fallback
+state, and conservative invalidation cases. External CLI
+fixtures verify JSON findings, failure exits, suppression, and shared/Simulator/
+device selection. Full repository tests and vet pass on Windows. This evidence
+does not establish Simulator or hardware readiness.
+The repository examples produce no capability findings after lifecycle, caller,
+captured-value, and fallback-state provenance is applied.
+
+Remaining: explicit version/target availability metadata, configured official
+SDK and compatibility-floor checks, multi-version acceptance fixtures, and
+bounded exported facts for cross-package capability helpers. Currently the
+loaded Go package supplies type identities; missing API symbols remain Go load
+errors, and a verified toolchain version is not treated as an API minimum.
 
 Model the optional slices exposed through `playdate.Context`.
 

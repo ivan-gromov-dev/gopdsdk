@@ -7,6 +7,36 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Started Step 5 optional-capability analysis on 2026-09-02. Four rules report
+  unchecked assertions, proven failed assertions, and already known comma-ok
+  results. Local guards, early returns, type switches, bounded predicate
+  helpers, wrappers, and immutable captured cells carry capability facts;
+  reassignment and opaque/mutable paths invalidate them. No automatic fixes
+  are generated. Assertions with related checks in another function produce
+  `likely` warnings instead of claiming a proven error; eleven such warnings
+  remain in repository examples pending lifecycle/caller facts.
+  Windows unit and external-consumer CLI fixtures cover all
+  targets and suppression; the full repository suite and vet pass. Version
+  availability, official SDK floors, and cross-package helper facts remain open.
+
+- Added the initial Step 4 application/lifecycle pack on 2026-09-02: eleven
+  default error rules cover application entry, undeliverable lifecycle methods,
+  scheduler update boundaries, nested scheduler/stencil execution, active sprite
+  close, transient framebuffer/bitmap/microphone/render-buffer escapes, and
+  locally proven owned acquisitions lost during termination. Rules run for
+  shared, Simulator, and device analysis targets. Unit fixtures and external
+  consumer CLI entry checks cover receiver shapes, helpers, generic factories,
+  unknown dispatch, successful cleanup, and all target selections. Windows
+  targeted race tests and `go vet ./...` pass; repository examples produce no
+  application/lifetime findings. The bounded local Step 4 pack also traces
+  private owned fields and PCM callback owners into termination, native callback
+  update boundaries, and scalar/lifecycle arguments through local helpers.
+  Generated factory-expression tests execute real `NewApplication` lifecycle
+  dispatch with a substituted native context and hook. Microphone aggregate
+  cleanup is excluded from leak reports. General ownership/retention graphs and
+  opaque aliases remain outside this local acceptance scope. No new native SDK
+  or hardware acceptance is claimed.
+
 - Completed the local implementation and acceptance matrix for the fifteen
   Step 3 device rules on 2026-09-02. The real external-consumer CLI tests cover
   positive/negative sources, generated-source and build-tag inclusion/exclusion,

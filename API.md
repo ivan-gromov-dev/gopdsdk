@@ -120,6 +120,79 @@ retain platform order. Release owned native resources on
 `LifecycleTerminate`; initialization must roll back resources already acquired
 when a later acquisition fails.
 
+## Application diagnostics
+
+`gopdsdk check` enables application and callback-lifetime diagnostics for
+`shared`, `simulator`, and `device`. All currently implemented rules below are
+default errors; unresolved dispatch and ownership do not produce an error.
+
+| Rule | Proven condition checked |
+| --- | --- |
+| `application-entry` | A package containing `pdxinfo` is `main` or lacks `func New() playdate.Game`. Libraries without `pdxinfo` do not require a factory. |
+| `application-lifecycle-shape` | A concrete Game returned by `New` or a local factory helper has `HandleLifecycle` but its actual pointer/value method set does not implement `LifecycleGame`. |
+| `application-scheduler-update-boundary` | A local static call path from Game `Init`, `HandleLifecycle`, or a registered native sprite/audio/microphone callback reaches `Scheduler.Update`. |
+| `application-nested-stencil` | A registered stencil callback reaches another `WithStencil` through local static calls. |
+| `application-nested-scheduler` | A scheduled closure calls `Update` on the same captured scheduler, with a locally stable capture. |
+| `application-sprite-callback-close` | A sprite callback closes a participating sprite parameter, directly or through a local helper. |
+| `application-termination-resource-leak` | A local owned acquisition or a proven non-nil private owned field is lost on a visible termination path without cleanup or transfer. |
+| `lifetime-framebuffer-escape` | A registered framebuffer callback stores its view or byte slice outside the callback. |
+| `lifetime-bitmap-data-escape` | A registered bitmap-data callback stores its view, image bytes, or mask bytes outside the callback. |
+| `lifetime-microphone-samples-escape` | A recording callback retains its samples outside the callback. |
+| `lifetime-audio-render-buffer-escape` | A PCM or generator render callback retains its output slices outside the callback. |
+
+Game method mismatches that already prevent Go type checking remain package-load
+errors. The analyzer follows at most eight local static call edges and 4096
+block visits per root, carrying scalar arguments and the loaded lifecycle-event
+constants through helpers. Unknown interface dispatch and arbitrary aliases are
+outside these proofs. Conditional helper blocks are omitted when argument facts
+are unavailable; their unavoidable continuation remains eligible. Copies of
+transient bytes into owned storage are allowed. The current public contract does
+not prohibit retaining `Context` itself, so there is no Context-escape rule.
+
+Termination analysis explores at most 256 local path states, using the loaded
+SDK's `LifecycleTerminate` constant and explicit successful acquisition checks.
+Paths with other unresolved conditions are omitted.
+Unknown calls and deferred helpers may perform aggregate cleanup and therefore
+discard ownership knowledge. A private field can establish pre-existing ownership
+only when every visible non-nil write comes directly from an owned constructor,
+no handle/address escapes or opaque uses invalidate it, and a termination guard
+proves the active receiver's field non-nil. This includes owned PCM callback
+sources, whose `Close` releases their registration. A known `Close`, transfer, or
+cleanup helper suppresses this limited field proof. Microphone recording is
+excluded from owned-acquisition leak checks because application termination
+performs aggregate cleanup. General retained-callback graphs, public fields,
+loops, and cross-package ownership remain outside these local proofs.
+
+## Capability diagnostics
+
+`gopdsdk check` enables these rules for shared, Simulator, and device analysis:
+
+| Rule | Default | Meaning |
+| --- | --- | --- |
+| `capability-unchecked-assertion` | error | A single-value assertion to an optional capability has no proven successful guard. |
+| `capability-unproven-assertion` | warning, likely confidence | Another function checks this capability, but the analyzer cannot prove that check protects this assertion. |
+| `capability-impossible-assertion` | error | A single-value assertion is known to fail if reached, including a failed guard, nil interface, or incompatible boxed concrete value. |
+| `capability-redundant-check` | information | A comma-ok check has an already established result on this path. |
+
+Checks recognize dominating comma-ok guards, early returns, type switches,
+boolean negation/equality, compatible interface wrappers, and simple local
+boolean helpers up to eight inference edges. Read-only closure captures can
+inherit an enclosing guard when their captured cell has a single initialization
+and no address escape. SSA value identity invalidates facts after reassignment;
+unknown predicates, mutable captures, and cross-package helpers do not establish
+a successful guard. Helpers returning a checked capability plus an error remain
+valid without another type assertion. Known checked failures should use the
+application's unsupported-capability fallback. No automatic fixes are generated.
+Checks in other functions, including a game's `Init`, may require lifecycle or
+caller facts that are not yet available. Such related checks produce the
+explicitly lower-confidence warning rather than a proven error. That warning
+still meets the CLI's default warning failure threshold.
+
+Capability types come from the loaded SDK package, including re-exporting
+wrappers, rather than the installed official SDK or the analyzer's binary.
+Missing Go API symbols remain package-load errors. These checks do not yet
+validate an official SDK version or a declared compatibility floor.
+
 ## Context capabilities
 
 `playdate.Context` composes five smaller interfaces:

@@ -20,6 +20,7 @@ func capabilityRuleRegistrations() []Registration {
 		findings := make(capabilityFindings)
 		capabilities := loadedOptionalCapabilities(pass)
 		functions := pass.ResultOf[providers.SSA].(*buildssa.SSA).SrcFuncs
+		flow := newCapabilityFlow(pass, functions)
 		checked := make(map[*ssa.Function][]types.Type)
 		for _, function := range functions {
 			for _, block := range function.Blocks {
@@ -41,6 +42,9 @@ func capabilityRuleRegistrations() []Registration {
 						continue
 					}
 					known, present := capabilityAt(assertion)
+					if !known && !assertion.CommaOk && flow.present(assertion.X, assertion.AssertedType, assertion.Block(), make(map[capabilityQuery]bool), 0) {
+						known, present = true, true
+					}
 					id := RuleID("")
 					message := ""
 					if assertion.CommaOk {
@@ -235,6 +239,9 @@ func capturedCapability(assertion *ssa.TypeAssert, source ssa.Value) (bool, bool
 				continue
 			}
 			binding := closure.Bindings[index]
+			if allocation, ok := binding.(*ssa.Alloc); ok && immutableCapabilityCell(allocation) == nil {
+				return false, false
+			}
 			var initial ssa.Value
 			if binding.Referrers() == nil {
 				return false, false
@@ -302,13 +309,96 @@ func readOnlyCapabilityCapture(value *ssa.FreeVar) bool {
 }
 
 func capabilityIdentity(value ssa.Value) ssa.Value {
-	for {
-		change, ok := value.(*ssa.ChangeInterface)
-		if !ok {
+	for depth := 0; depth < 8; depth++ {
+		switch source := value.(type) {
+		case *ssa.ChangeInterface:
+			value = source.X
+		case *ssa.UnOp:
+			if source.Op != token.MUL {
+				return value
+			}
+			allocation, ok := source.X.(*ssa.Alloc)
+			if !ok {
+				return value
+			}
+			initial := immutableCapabilityCell(allocation)
+			if initial == nil {
+				return value
+			}
+			value = initial
+		default:
 			return value
 		}
-		value = change.X
 	}
+	return value
+}
+
+func immutableCapabilityCell(cell *ssa.Alloc) ssa.Value {
+	if cell.Referrers() == nil {
+		return nil
+	}
+	var initial ssa.Value
+	var store *ssa.Store
+	for _, use := range *cell.Referrers() {
+		switch use := use.(type) {
+		case *ssa.Store:
+			if use.Addr != cell || initial != nil {
+				return nil
+			}
+			initial = use.Val
+			store = use
+		case *ssa.UnOp:
+			if use.Op != token.MUL {
+				return nil
+			}
+		case *ssa.DebugRef:
+		case *ssa.MakeClosure:
+			function, ok := use.Fn.(*ssa.Function)
+			if !ok {
+				return nil
+			}
+			for index, binding := range use.Bindings {
+				if binding == cell && (index >= len(function.FreeVars) || !readOnlyCapabilityCapture(function.FreeVars[index])) {
+					return nil
+				}
+			}
+		default:
+			return nil
+		}
+	}
+	if store == nil {
+		return nil
+	}
+	for _, use := range *cell.Referrers() {
+		if use == store {
+			continue
+		}
+		switch use.(type) {
+		case *ssa.UnOp, *ssa.MakeClosure:
+			if !capabilityInstructionBefore(store, use) {
+				return nil
+			}
+		}
+	}
+	return initial
+}
+
+func capabilityInstructionBefore(first, second ssa.Instruction) bool {
+	if !first.Block().Dominates(second.Block()) {
+		return false
+	}
+	if first.Block() != second.Block() {
+		return true
+	}
+	for _, instruction := range first.Block().Instrs {
+		if instruction == first {
+			return true
+		}
+		if instruction == second {
+			return false
+		}
+	}
+	return false
 }
 
 // Only boolean helpers returning one unchanged assertion result (or its

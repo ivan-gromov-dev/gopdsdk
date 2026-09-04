@@ -481,23 +481,27 @@ incomplete call-path conclusions remain warnings or silent.
 
 ### Step 5 — Add optional-capability and availability facts
 
-In progress (2026-09-02): the production registry enables unchecked and
+In progress (updated 2026-09-04): the production registry enables unchecked and
 provably impossible optional-capability assertions as errors, and redundant or
 contradictory comma-ok checks as information, on all analysis targets. A related
-check in another function lowers an unresolved assertion to a `likely` warning;
-the checker does not claim to prove cross-callback protection from `Init` alone.
-Dominator
-facts cover early exits, type switches, boolean guards, local predicate helpers,
-interface wrappers, loops, and read-only captured values. Reassignment, unknown
-predicates, mutable captures, and opaque helpers do not preserve inferred guards.
-No potentially panicking quick fixes are generated.
+check on an unresolved path remains a `likely` warning. Dominator facts cover
+early exits, type switches, boolean guards, local predicate helpers, interface
+wrappers, loops, and read-only captured values. Bounded caller facts cover
+private helpers only when every static caller supplies the proven capability.
+Application lifecycle facts connect a successful `Init` requirement to
+`Update` or `HandleLifecycle` only for the concrete game returned by `New`;
+explicit manual callback calls, escaped helpers, mutable sentinels, reassignment,
+unknown predicates, mutable captures, and opaque helpers remain unproven. A
+successful fallback may be excluded when a single private state field guards the
+later callback assertion. No potentially panicking quick fixes are generated.
 
-Unit fixtures cover the local inference and invalidation cases. External CLI
+Unit fixtures cover local inference, caller and lifecycle propagation, fallback
+state, and conservative invalidation cases. External CLI
 fixtures verify JSON findings, failure exits, suppression, and shared/Simulator/
 device selection. Full repository tests and vet pass on Windows. This evidence
 does not establish Simulator or hardware readiness.
-The repository examples expose eleven such related-check warnings; resolving
-their lifecycle/caller provenance remains part of this step's precision work.
+The repository examples produce no capability findings after lifecycle, caller,
+captured-value, and fallback-state provenance is applied.
 
 Remaining: explicit version/target availability metadata, configured official
 SDK and compatibility-floor checks, multi-version acceptance fixtures, and

@@ -61,6 +61,14 @@ func TestCapabilityRules(t *testing.T) {
 		want       []RuleID
 	}{
 		{"unchecked", `func f(c playdate.Context){c.(playdate.Launcher).ExitToLauncher()}`, []RuleID{"capability-unchecked-assertion"}},
+		{"guarded private callee", `func use(c playdate.Context){c.(playdate.Launcher).ExitToLauncher()};func f(c playdate.Context){if _,ok:=c.(playdate.Launcher);ok{use(c)}}`, nil},
+		{"mixed private callers", `func use(c playdate.Context){c.(playdate.Launcher).ExitToLauncher()};func f(c playdate.Context){if _,ok:=c.(playdate.Launcher);ok{use(c)}};func unsafe(c playdate.Context){use(c)}`, []RuleID{"capability-unproven-assertion"}},
+		{"escaped private callee", `func use(c playdate.Context){c.(playdate.Launcher).ExitToLauncher()};var escape=use;func f(c playdate.Context){if _,ok:=c.(playdate.Launcher);ok{use(c)}}`, []RuleID{"capability-unproven-assertion"}},
+		{"required on init", lifecycleCapabilityFixture + `func(*game)Init(c playdate.Context)error{if _,ok:=c.(playdate.Launcher);!ok{return errors.New("missing")};return nil}`, nil},
+		{"init fallback", lifecycleCapabilityFixture + `func(*game)Init(c playdate.Context)error{if _,ok:=c.(playdate.Launcher);!ok{return nil};return nil}`, []RuleID{"capability-unproven-assertion"}},
+		{"init private sentinel", lifecycleCapabilityFixture + `var missing=errors.New("missing");func(*game)Init(c playdate.Context)error{if _,ok:=c.(playdate.Launcher);!ok{return missing};return nil}`, nil},
+		{"init mutable sentinel", lifecycleCapabilityFixture + `var missing=errors.New("missing");func clear(){missing=nil};func(*game)Init(c playdate.Context)error{if _,ok:=c.(playdate.Launcher);!ok{return missing};return nil}`, []RuleID{"capability-unproven-assertion"}},
+		{"manual callback contexts", lifecycleCapabilityFixture + `func(*game)Init(c playdate.Context)error{if _,ok:=c.(playdate.Launcher);!ok{return errors.New("missing")};return nil};func manual(c playdate.Context){g:=&game{};g.Update(c)}`, []RuleID{"capability-unproven-assertion"}},
 		{"cross function uncertainty", `func checked(c playdate.Context){_,_=c.(playdate.Launcher)};func use(c playdate.Context){c.(playdate.Launcher).ExitToLauncher()}`, []RuleID{"capability-unproven-assertion"}},
 		{"helper interface conversion", `func has(c playdate.Context)bool{_,ok:=any(c).(playdate.Launcher);return ok};func f(c playdate.Context){if has(c){c.(playdate.Launcher).ExitToLauncher()}}`, nil},
 		{"closure enclosing guard", `func f(c playdate.Context)func(){if _,ok:=c.(playdate.Launcher);ok{return func(){c.(playdate.Launcher).ExitToLauncher()}};return nil}`, nil},
@@ -119,3 +127,10 @@ func TestCapabilityRules(t *testing.T) {
 		})
 	}
 }
+
+const lifecycleCapabilityFixture = `import "errors"
+var _=errors.New
+type game struct{}
+func New()playdate.Game{return &game{}}
+func(*game)Update(c playdate.Context)(bool,error){c.(playdate.Launcher).ExitToLauncher();return true,nil}
+`

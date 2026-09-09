@@ -14,13 +14,23 @@ import (
 
 type capabilityFindings map[RuleID][]analysis.Diagnostic
 
+type capabilityHelperFact struct {
+	Parameter int
+	Package   string
+	Name      string
+	Negated   bool
+}
+
+func (*capabilityHelperFact) AFact() {}
+
 func capabilityRuleRegistrations() []Registration {
 	providers := StandardProviders()
-	provider := &analysis.Analyzer{Name: "capabilityfacts", Doc: "track checked optional capabilities by SSA value identity", Requires: []*analysis.Analyzer{providers.SSA}, ResultType: reflect.TypeOf(capabilityFindings{}), Run: func(pass *analysis.Pass) (any, error) {
+	provider := &analysis.Analyzer{Name: "capabilityfacts", Doc: "track checked optional capabilities by SSA value identity", Requires: []*analysis.Analyzer{providers.SSA}, ResultType: reflect.TypeOf(capabilityFindings{}), FactTypes: []analysis.Fact{new(capabilityHelperFact)}, Run: func(pass *analysis.Pass) (any, error) {
 		findings := make(capabilityFindings)
 		capabilities := loadedOptionalCapabilities(pass)
 		functions := pass.ResultOf[providers.SSA].(*buildssa.SSA).SrcFuncs
 		flow := newCapabilityFlow(pass, functions)
+		exportCapabilityHelperFacts(pass, functions)
 		checked := make(map[*ssa.Function][]types.Type)
 		for _, function := range functions {
 			for _, block := range function.Blocks {
@@ -41,7 +51,7 @@ func capabilityRuleRegistrations() []Registration {
 					if !ok || !optionalCapability(capabilities, assertion.AssertedType) {
 						continue
 					}
-					known, present := capabilityAt(assertion)
+					known, present := capabilityAt(pass, assertion)
 					if !known && !assertion.CommaOk && flow.present(assertion.X, assertion.AssertedType, assertion.Block(), make(map[capabilityQuery]bool), 0) {
 						known, present = true, true
 					}
@@ -91,6 +101,45 @@ func capabilityRuleRegistrations() []Registration {
 		}}})
 	}
 	return result
+}
+
+func exportCapabilityHelperFacts(pass *analysis.Pass, functions []*ssa.Function) {
+	for _, function := range functions {
+		object, _ := function.Object().(*types.Func)
+		if object == nil || !object.Exported() || function.Signature.Results().Len() != 1 || !types.Identical(function.Signature.Results().At(0).Type(), types.Typ[types.Bool]) {
+			continue
+		}
+		var returned ssa.Value
+		valid := true
+		for _, block := range function.Blocks {
+			for _, instruction := range block.Instrs {
+				if ret, ok := instruction.(*ssa.Return); ok {
+					if len(ret.Results) != 1 || returned != nil {
+						valid = false
+						continue
+					}
+					returned = ret.Results[0]
+				}
+			}
+		}
+		guard, ok := resolveCapabilityGuard(pass, returned, true, nil, 0)
+		parameter, parameterOK := capabilityIdentity(guard.source).(*ssa.Parameter)
+		if !valid || !ok || !parameterOK {
+			continue
+		}
+		index := -1
+		for i, candidate := range function.Params {
+			if candidate == parameter {
+				index = i
+				break
+			}
+		}
+		named, _ := guard.target.(*types.Named)
+		if named == nil || named.Obj().Pkg() == nil || index < 0 {
+			continue
+		}
+		pass.ExportObjectFact(object, &capabilityHelperFact{Parameter: index, Package: named.Obj().Pkg().Path(), Name: named.Obj().Name(), Negated: !guard.success})
+	}
 }
 
 func optionalCapability(capabilities []*types.Interface, target types.Type) bool {
@@ -162,15 +211,19 @@ type capabilityGuard struct {
 	success bool
 }
 
-func capabilityAt(assertion *ssa.TypeAssert) (bool, bool) {
+func capabilityAt(pass *analysis.Pass, assertion *ssa.TypeAssert) (bool, bool) {
 	source := capabilityIdentity(assertion.X)
-	if known, present := capabilityOnPath(source, assertion.AssertedType, assertion.Block()); known {
+	if known, present := capabilityOnPathWithPass(pass, source, assertion.AssertedType, assertion.Block()); known {
 		return known, present
 	}
 	return capturedCapability(assertion, source)
 }
 
 func capabilityOnPath(source ssa.Value, target types.Type, location *ssa.BasicBlock) (bool, bool) {
+	return capabilityOnPathWithPass(nil, source, target, location)
+}
+
+func capabilityOnPathWithPass(pass *analysis.Pass, source ssa.Value, target types.Type, location *ssa.BasicBlock) (bool, bool) {
 	if nilSSA(source) {
 		return true, false
 	}
@@ -194,7 +247,7 @@ func capabilityOnPath(source ssa.Value, target types.Type, location *ssa.BasicBl
 				continue
 			}
 		}
-		guard, ok := resolveCapabilityGuard(branch.Cond, truth, nil, 0)
+		guard, ok := resolveCapabilityGuard(pass, branch.Cond, truth, nil, 0)
 		if !ok || capabilityIdentity(guard.source) != source {
 			continue
 		}
@@ -404,12 +457,12 @@ func capabilityInstructionBefore(first, second ssa.Instruction) bool {
 // Only boolean helpers returning one unchanged assertion result (or its
 // negation) carry facts. Multiple returns, unknown calls, and memory loads do
 // not establish a guard. SSA identities naturally invalidate reassignment.
-func resolveCapabilityGuard(value ssa.Value, truth bool, bindings map[ssa.Value]ssa.Value, depth int) (capabilityGuard, bool) {
+func resolveCapabilityGuard(pass *analysis.Pass, value ssa.Value, truth bool, bindings map[ssa.Value]ssa.Value, depth int) (capabilityGuard, bool) {
 	if depth > 8 {
 		return capabilityGuard{}, false
 	}
 	if bound := bindings[value]; bound != nil {
-		return resolveCapabilityGuard(bound, truth, nil, depth+1)
+		return resolveCapabilityGuard(pass, bound, truth, nil, depth+1)
 	}
 	switch value := value.(type) {
 	case *ssa.BinOp:
@@ -428,11 +481,11 @@ func resolveCapabilityGuard(value ssa.Value, truth bool, bindings map[ssa.Value]
 			if !truth {
 				want = !want
 			}
-			return resolveCapabilityGuard(operand, want, bindings, depth+1)
+			return resolveCapabilityGuard(pass, operand, want, bindings, depth+1)
 		}
 	case *ssa.UnOp:
 		if value.Op == token.NOT {
-			return resolveCapabilityGuard(value.X, !truth, bindings, depth+1)
+			return resolveCapabilityGuard(pass, value.X, !truth, bindings, depth+1)
 		}
 	case *ssa.Extract:
 		assertion, ok := value.Tuple.(*ssa.TypeAssert)
@@ -447,7 +500,22 @@ func resolveCapabilityGuard(value ssa.Value, truth bool, bindings map[ssa.Value]
 	case *ssa.Call:
 		call := value.Common()
 		callee := call.StaticCallee()
-		if callee == nil || callee.Pkg != value.Parent().Pkg {
+		if callee == nil {
+			return capabilityGuard{}, false
+		}
+		if callee.Pkg != value.Parent().Pkg && pass != nil {
+			object, _ := callee.Object().(*types.Func)
+			var fact capabilityHelperFact
+			if object == nil || !pass.ImportObjectFact(object, &fact) || fact.Parameter < 0 || fact.Parameter >= len(call.Args) {
+				return capabilityGuard{}, false
+			}
+			target := namedTypeFromImports(pass.Pkg, fact.Package, fact.Name)
+			if target == nil {
+				return capabilityGuard{}, false
+			}
+			return capabilityGuard{source: capabilityIdentity(call.Args[fact.Parameter]), target: target, success: truth != fact.Negated}, true
+		}
+		if callee.Pkg != value.Parent().Pkg {
 			return capabilityGuard{}, false
 		}
 		arguments := make(map[ssa.Value]ssa.Value)
@@ -471,8 +539,29 @@ func resolveCapabilityGuard(value ssa.Value, truth bool, bindings map[ssa.Value]
 			}
 		}
 		if returned != nil {
-			return resolveCapabilityGuard(returned, truth, arguments, depth+1)
+			return resolveCapabilityGuard(pass, returned, truth, arguments, depth+1)
 		}
 	}
 	return capabilityGuard{}, false
+}
+
+func namedTypeFromImports(root *types.Package, path, name string) types.Type {
+	queue := []*types.Package{root}
+	seen := make(map[*types.Package]bool)
+	for len(queue) > 0 {
+		pkg := queue[0]
+		queue = queue[1:]
+		if seen[pkg] {
+			continue
+		}
+		seen[pkg] = true
+		if pkg.Path() == path {
+			if object := pkg.Scope().Lookup(name); object != nil {
+				return object.Type()
+			}
+			return nil
+		}
+		queue = append(queue, pkg.Imports()...)
+	}
+	return nil
 }

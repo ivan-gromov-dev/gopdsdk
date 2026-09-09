@@ -9,21 +9,19 @@ Follow `AGENTS.md`.
 
 ## Workflow
 
-1. Inspect status, relevant code, callers, tests, and the package comment.
-2. State the feature/package boundary, then implement the smallest complete
-   behavior and error paths.
-3. Add deterministic tests; abstract I/O or processes only at test/platform
-   boundaries.
-4. Verify proportionally and inspect the diff for unrelated edits, portability,
-   provenance, and overstated readiness.
+1. Inspect status, affected contracts, callers, and tests.
+2. State the feature/package boundary; implement the smallest complete behavior
+   and error paths.
+3. Add deterministic tests. Abstract I/O/processes only at boundaries.
+4. Verify proportionally; inspect the final diff and evidence claims.
 
 Do not add dependencies, generated bindings, public API, or shared packages
 speculatively.
 
 ## Checks
 
-Use workspace `.cache` for `GOCACHE` and `GOMODCACHE`. Report all failures and
-skipped capabilities:
+Use workspace `.cache` for Go caches. Run applicable checks and report failures
+or skipped capabilities:
 
 ```powershell
 gofmt -w cmd internal
@@ -33,4 +31,4 @@ git diff --check
 go run ./cmd/gopdsdk doctor
 ```
 
-Use `$release` for release-candidate or publishing work.
+Use `$release` for release work.

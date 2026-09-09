@@ -35,6 +35,8 @@ type RepositoryConfig struct {
 	Baseline      *string             `json:"baseline,omitempty"`
 	Generated     *GeneratedPolicy    `json:"generated,omitempty"`
 	ChangedFiles  *[]string           `json:"changedFiles,omitempty"`
+	GopdsdkFloor  *string             `json:"gopdsdkFloor,omitempty"`
+	PlaydateSDK   *string             `json:"playdateSDK,omitempty"`
 }
 
 func loadRepositoryConfig(moduleRoot, requestedPath string, explicit bool) (RepositoryConfig, error) {
@@ -136,6 +138,16 @@ func (config RepositoryConfig) Validate() error {
 			return err
 		}
 		*config.ChangedFiles = files
+	}
+	if config.GopdsdkFloor != nil {
+		if err := validateReleaseVersion("gopdsdk compatibility floor", *config.GopdsdkFloor, true); err != nil {
+			return err
+		}
+	}
+	if config.PlaydateSDK != nil {
+		if err := validateReleaseVersion("Playdate SDK version", *config.PlaydateSDK, false); err != nil {
+			return err
+		}
 	}
 	return nil
 }

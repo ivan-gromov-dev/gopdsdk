@@ -122,9 +122,11 @@ const (
 // a contract. Package is relative to the module root, such as "playdate" or
 // "playdate/schedule". Member is empty for a type or function declaration.
 type PublicSymbol struct {
-	Package string `json:"package"`
-	Name    string `json:"name"`
-	Member  string `json:"member,omitempty"`
+	Package            string `json:"package"`
+	Name               string `json:"name"`
+	Member             string `json:"member,omitempty"`
+	SinceGopdsdk       string `json:"sinceGopdsdk,omitempty"`
+	MinimumPlaydateSDK string `json:"minimumPlaydateSDK,omitempty"`
 }
 
 // Inventory is the versioned, machine-readable analyzer contract catalog.
@@ -161,6 +163,16 @@ func (inventory Inventory) Validate() error {
 			}
 			if !strings.HasPrefix(symbol.Package, "playdate") || strings.Contains(symbol.Package, "..") {
 				return fmt.Errorf("contract %q has invalid public API package %q", contract.ID, symbol.Package)
+			}
+			if symbol.SinceGopdsdk != "" {
+				if err := validateReleaseVersion("public API gopdsdk version", symbol.SinceGopdsdk, true); err != nil {
+					return fmt.Errorf("contract %q: %w", contract.ID, err)
+				}
+			}
+			if symbol.MinimumPlaydateSDK != "" {
+				if err := validateReleaseVersion("public API Playdate SDK version", symbol.MinimumPlaydateSDK, false); err != nil {
+					return fmt.Errorf("contract %q: %w", contract.ID, err)
+				}
 			}
 		}
 		for _, symbol := range contract.GoSymbols {

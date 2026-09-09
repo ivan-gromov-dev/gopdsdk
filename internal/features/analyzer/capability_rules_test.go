@@ -53,6 +53,21 @@ func TestExternalCapabilityRules(t *testing.T) {
 			}
 		}
 	}
+	writeAnalyzerFixture(t, root, "game.go", "package game\nimport \""+playdatePackage+"\"\nfunc f(c playdate.Context){if v,ok:=c.(playdate.Videos);ok{_,_=v.LoadVideo(\"movie.pdv\")}}\n")
+	command := exec.CommandContext(context.Background(), binary, "check", "--target", "device", "--format", "json", "--categories", "capability", "--gopdsdk-floor", "v0.9.0", "--playdate-sdk", "3.0.0", ".")
+	command.Dir = root
+	output, err := command.Output()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != ExitFindings {
+		t.Fatalf("availability exit: %v\n%s", err, output)
+	}
+	var report Report
+	if err := json.Unmarshal(output, &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "capability-video-availability" {
+		t.Fatalf("availability report: %+v", report)
+	}
 }
 
 func TestCapabilityRules(t *testing.T) {
@@ -123,6 +138,56 @@ func TestCapabilityRules(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, test.want) {
 				t.Fatalf("findings: %+v; want %v", result.Findings, test.want)
+			}
+		})
+	}
+}
+
+func TestCapabilityRuleImportsExportedHelperFact(t *testing.T) {
+	root := t.TempDir()
+	writeAnalyzerFixture(t, root, "go.mod", fmt.Sprintf("module example.com/capability\n\ngo 1.26.5\nrequire github.com/ivan-gromov-dev/gopdsdk v1.0.0\nreplace github.com/ivan-gromov-dev/gopdsdk => %s\n", filepath.ToSlash(repositoryRoot(t))))
+	writeAnalyzerFixture(t, root, "guards/guards.go", "package guards\nimport \""+playdatePackage+"\"\nfunc HasLauncher(c playdate.Context)bool{_,ok:=c.(playdate.Launcher);return ok}\n")
+	writeAnalyzerFixture(t, root, "game.go", "package game\nimport (\""+playdatePackage+"\";\"example.com/capability/guards\")\nfunc f(c playdate.Context){if guards.HasLauncher(c){c.(playdate.Launcher).ExitToLauncher()}}\n")
+	snapshot, err := LoadPackages(context.Background(), LoadConfig{ModuleRoot: root, Target: TargetSimulator, Patterns: []string{"./..."}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options, err := DefaultCheckOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := options.Registry.Run(context.Background(), snapshot, RuleSelection{Families: []RuleFamily{FamilyCapability}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Findings) != 0 {
+		t.Fatalf("cross-package guard findings: %+v", result.Findings)
+	}
+}
+
+func TestCapabilityAvailabilityVersionsAndTargets(t *testing.T) {
+	root := t.TempDir()
+	writeAnalyzerFixture(t, root, "go.mod", fmt.Sprintf("module example.com/availability\n\ngo 1.26.5\nrequire github.com/ivan-gromov-dev/gopdsdk v1.0.0\nreplace github.com/ivan-gromov-dev/gopdsdk => %s\n", filepath.ToSlash(repositoryRoot(t))))
+	writeAnalyzerFixture(t, root, "game.go", "package game\nimport \""+playdatePackage+"\"\nfunc f(c playdate.Context){if v,ok:=c.(playdate.Videos);ok{_,_=v.LoadVideo(\"movie.pdv\")}}\n")
+	for _, test := range []struct {
+		name, floor, sdk string
+		target           Target
+		want             int
+	}{
+		{"current", "v1.0.0", "3.1.1", TargetSimulator, 0},
+		{"older gopdsdk", "v0.9.0", "3.1.1", TargetSimulator, 1},
+		{"older official SDK", "v1.0.0", "3.0.0", TargetDevice, 1},
+		{"shared target", "v0.9.0", "3.0.0", TargetShared, 0},
+		{"unconfigured", "", "", TargetDevice, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot, err := LoadPackages(context.Background(), LoadConfig{ModuleRoot: root, Target: test.target, Patterns: []string{"."}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := capabilityAvailabilityFindings(snapshot, test.floor, test.sdk)
+			if len(got) != test.want {
+				t.Fatalf("findings: %+v; want %d", got, test.want)
 			}
 		})
 	}

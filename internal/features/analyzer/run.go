@@ -75,6 +75,8 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	failOn := flags.String("fail-on", "warning", "exit threshold: error, warning, performance, information, or none")
 	baselinePath := flags.String("baseline", "", "path to an adoption baseline")
 	generated := flags.String("generated", "exclude", "generated sources: exclude or include")
+	gopdsdkFloor := flags.String("gopdsdk-floor", "", "oldest supported gopdsdk release")
+	playdateSDK := flags.String("playdate-sdk", "", "configured official Playdate SDK version")
 	var changedValues repeatedFlag
 	flags.Var(&changedValues, "changed-file", "module-relative changed file; may be repeated")
 	var severityValues repeatedFlag
@@ -123,6 +125,22 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	}
 	if !visited["generated"] && repositoryConfig.Generated != nil {
 		*generated = string(*repositoryConfig.Generated)
+	}
+	if !visited["gopdsdk-floor"] && repositoryConfig.GopdsdkFloor != nil {
+		*gopdsdkFloor = *repositoryConfig.GopdsdkFloor
+	}
+	if !visited["playdate-sdk"] && repositoryConfig.PlaydateSDK != nil {
+		*playdateSDK = *repositoryConfig.PlaydateSDK
+	}
+	if *gopdsdkFloor != "" {
+		if err := validateReleaseVersion("gopdsdk compatibility floor", *gopdsdkFloor, true); err != nil {
+			return commandError(ExitConfiguration, err)
+		}
+	}
+	if *playdateSDK != "" {
+		if err := validateReleaseVersion("Playdate SDK version", *playdateSDK, false); err != nil {
+			return commandError(ExitConfiguration, err)
+		}
 	}
 	changedFiles := append([]string(nil), changedValues...)
 	if len(changedFiles) == 0 && repositoryConfig.ChangedFiles != nil {
@@ -197,6 +215,9 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		result, err := options.Registry.Run(ctx, snapshot, selection)
 		if err != nil {
 			return classifyCheckError(err, ExitInternal)
+		}
+		if activeRuleSet(options.Catalog, selection, selectedTarget)["capability-video-availability"] {
+			result.Findings = append(result.Findings, capabilityAvailabilityFindings(snapshot, *gopdsdkFloor, *playdateSDK)...)
 		}
 		filtered, err := filterSourceFindings(snapshot, result.Findings, GeneratedPolicy(*generated), changedSet)
 		if err != nil {

@@ -28,7 +28,7 @@ func TestContractInventoryValid(t *testing.T) {
 			t.Errorf("contract %q has invalid normative reference %q", contract.ID, contract.NormativeRef)
 		}
 	}
-	for _, kind := range []ContractKind{ContractReplacement, ContractOptionalCapability, ContractCallbackScope, ContractOwnedHandle, ContractBorrowedHandle, ContractRetention, ContractClose, ContractUpdateOnly, ContractArgumentBound, ContractAvailability} {
+	for _, kind := range []ContractKind{ContractReplacement, ContractOptionalCapability, ContractCallbackScope, ContractOwnedHandle, ContractBorrowedHandle, ContractRetention, ContractClose, ContractUpdateOnly, ContractArgumentBound, ContractErrorHandling, ContractSignificantResult, ContractValue, ContractAvailability} {
 		if !seenKinds[kind] {
 			t.Errorf("inventory has no %q contract", kind)
 		}

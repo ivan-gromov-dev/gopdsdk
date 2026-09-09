@@ -49,6 +49,7 @@ func DefaultCheckOptions() (CheckOptions, error) {
 	}
 	registrations := append(deviceRuleRegistrations(), applicationRuleRegistrations()...)
 	registrations = append(registrations, capabilityRuleRegistrations()...)
+	registrations = append(registrations, resultRuleRegistrations()...)
 	registry, err := NewRegistry(catalog, registrations...)
 	if err != nil {
 		return CheckOptions{}, err

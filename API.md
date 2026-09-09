@@ -143,6 +143,13 @@ default errors; unresolved dispatch and ownership do not produce an error.
 | `lifetime-bitmap-data-possible-escape` | Experimental: bitmap data reaches a call whose retention behavior cannot be proved. |
 | `lifetime-microphone-samples-possible-escape` | Experimental: microphone samples reach a call whose retention behavior cannot be proved. |
 | `lifetime-audio-render-buffer-possible-escape` | Experimental: a render buffer reaches a call whose retention behavior cannot be proved. |
+| `ownership-resource-leak` | A successfully acquired local owned handle reaches a return without close or a visible transfer. |
+| `ownership-double-close` | The same local owned handle is closed twice on one path. |
+| `ownership-use-after-close` | A non-bitmap SDK handle is used after a locally visible close. |
+| `ownership-bitmap-use-after-close` | A bitmap is used after a locally visible close. |
+| `ownership-borrowed-close` | A borrowed handle, such as a bitmap-table frame, is closed by the caller. |
+| `ownership-retained-close` | A menu bitmap is closed before it is cleared or replaced. |
+| `ownership-close-order` | A handle is closed before a locally visible retaining owner detaches or closes it. |
 
 Game method mismatches that already prevent Go type checking remain package-load
 errors. The analyzer follows at most eight local static call edges and 4096
@@ -166,6 +173,14 @@ cleanup helper suppresses this limited field proof. Microphone recording is
 excluded from owned-acquisition leak checks because application termination
 performs aggregate cleanup. General retained-callback graphs, public fields,
 loops, and cross-package ownership remain outside these local proofs.
+
+Local ownership analysis follows SSA control-flow paths within one function. It
+recognizes successful SDK constructors, aliases, deferred cleanup, borrowed and
+wrapper results, aggregate owners, and documented retain, replace, clear, and
+remove operations. Unknown calls are treated as possible transfers and do not
+become leak findings. Invalid close order includes related source information
+pointing to the retaining operation. The analysis is deliberately silent when
+constructor success, an escape, or cross-function cleanup cannot be proved.
 
 ## Error contracts
 

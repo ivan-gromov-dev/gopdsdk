@@ -167,6 +167,29 @@ excluded from owned-acquisition leak checks because application termination
 performs aggregate cleanup. General retained-callback graphs, public fields,
 loops, and cross-package ownership remain outside these local proofs.
 
+## Error contracts
+
+`gopdsdk check` applies SDK-specific result rules only to calls whose declaring
+package is `playdate` or one of its subpackages. It does not report similarly
+named application or standard-library calls.
+
+| Rule | Default | Proven condition checked |
+| --- | --- | --- |
+| `result-sdk-error-discarded` | error | An error result from an SDK call is unused, assigned to `_`, or discarded by `defer`. Returning it, storing it in a named result, wrapping it, or otherwise consuming it is accepted. |
+| `result-sdk-value-discarded` | warning | A documented queue, lookup, cancellation, readiness, or copy result is unused. Other SDK values are not treated as significant by type alone. |
+| `result-sdk-error-comparison` | error | An SDK `Err…` sentinel is used with `==` or `!=`; wrapped SDK errors require `errors.Is`. |
+| `result-sdk-typed-diagnostic` | error | An error is directly asserted to an exported SDK error type; wrapped diagnostics require `errors.As`. |
+| `result-menu-image-offset` | error | `SetMenuImage` receives a constant or finite constant join outside `0..200`. |
+| `result-invalid-argument` | error | A constant or finite constant join violates a modeled queue-capacity, diagnostics-frame-limit, animation-index, or animation-count range. |
+
+Range propagation is deliberately limited to integer constants, conversions,
+and phi joins whose every input is known. A partially invalid join is reported
+with its proven minimum and maximum; unknown arithmetic or input ends the proof.
+The rule pack emits no edits because error propagation and fallback behavior
+are application-specific. Runtime handle state, path validity, floating-point
+finiteness, and ownership-dependent value compatibility remain outside these
+Step 7 proofs and belong to later ownership or workspace analysis.
+
 ## Capability diagnostics
 
 `gopdsdk check` enables these rules for shared, Simulator, and device analysis:

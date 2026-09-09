@@ -7,6 +7,14 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 7 error, result, and value-contract analysis on
+  2026-09-09. Six package-identity-aware default rules diagnose discarded SDK
+  errors and inventoried significant results, direct wrapped-sentinel and typed
+  diagnostic matching, and proven integer-range violations through constants,
+  conversions, and finite branch joins. The rules do not emit automatic fixes
+  or match unrelated application APIs. Windows analyzer unit coverage passes;
+  no SDK, Simulator, USB, or physical-device runtime evidence is claimed.
+
 - Completed analyzer Step 6 callback-lifetime flow on 2026-09-09. The four
   default lifetime rules now diagnose definite return, escaping-store,
   container, closure, channel, goroutine, alias, subslice, and bounded local

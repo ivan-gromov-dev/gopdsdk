@@ -134,6 +134,7 @@ func closeSoundEffect(effect playdate.SoundEffect) error { return effect.Close()
 func closeFont(font playdate.Font) error { return font.Close() }
 
 // analyzer-contract: file-close-semantics positive
+// analyzer-contract: sdk-error-handling positive
 func closeFile(file playdate.File) error { return file.Close() }
 
 // analyzer-contract: video-close-semantics positive
@@ -141,6 +142,7 @@ func closeVideo(player playdate.VideoPlayer) error { return player.Close() }
 
 // analyzer-contract: menu-image-retention positive
 // analyzer-contract: menu-image-offset-bound positive
+// analyzer-contract: sdk-value-contracts positive
 func installMenuImage(controls playdate.SystemControls, bitmap playdate.Bitmap) error {
 	if err := controls.SetMenuImage(bitmap, 200); err != nil {
 		return err
@@ -150,6 +152,9 @@ func installMenuImage(controls playdate.SystemControls, bitmap playdate.Bitmap) 
 }
 
 type game struct{ scheduler *schedule.Scheduler }
+
+// analyzer-contract: sdk-significant-results positive
+func enqueue(queue *schedule.Queue[int]) bool { return queue.TrySend(1) }
 
 func (*game) Init(playdate.Context) error { return nil }
 

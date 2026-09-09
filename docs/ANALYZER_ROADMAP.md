@@ -1,8 +1,7 @@
 # Static analyzer roadmap
 
-Status: Steps 0–1 complete; Step 2 is in progress. Step 3 implementation and
-local acceptance are complete; native three-platform CI is pending.
-Updated 2026-09-02.
+Status: Steps 0–7 complete. Step 3 native three-platform CI remains pending.
+Updated 2026-09-09.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public
@@ -581,6 +580,23 @@ escapes remain experimental warnings.
 
 Convert public sentinel, typed diagnostic, result, and argument contracts into
 flow-sensitive checks.
+
+Complete: six default rules now restrict result analysis to `playdate` and its
+subpackages. They diagnose unused SDK errors (including blank assignments and
+deferred cleanup), discarded inventoried queue/lookup/cancellation/copy results,
+direct comparisons with SDK sentinels, direct assertions to exported SDK error
+types, and proven integer-range violations. Constant facts survive conversions
+and finite phi joins, including a join with any invalid alternative. Package
+identity prevents similarly named application methods from producing generic
+`errcheck` noise. No fixes are emitted because propagation, fallback, and
+evaluation-order choices are application-specific.
+
+The Windows analyzer unit suite covers multi-result blanks, deferred cleanup,
+generic queue construction, `errors.Is`, `errors.As`, exact boundary constants,
+branch joins, and unrelated user APIs on 2026-09-09. This is static analyzer
+evidence only; no SDK build, Simulator, USB, or physical-device behavior is
+claimed. Runtime ownership state and workspace asset validity remain in their
+later roadmap steps.
 
 Rule scope:
 

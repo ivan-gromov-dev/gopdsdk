@@ -134,6 +134,7 @@ func closeFontTwice(font playdate.Font) error {
 }
 
 // analyzer-contract: file-close-semantics negative
+// analyzer-contract: sdk-error-handling negative
 func discardFileCloseError(file playdate.File) { _ = file.Close() }
 
 // analyzer-contract: video-close-semantics negative
@@ -165,6 +166,10 @@ func initializeScheduler(scheduler *schedule.Scheduler) error {
 }
 
 // analyzer-contract: menu-image-offset-bound negative
+// analyzer-contract: sdk-value-contracts negative
 func invalidMenuOffset(controls playdate.SystemControls, bitmap playdate.Bitmap) error {
 	return controls.SetMenuImage(bitmap, 201)
 }
+
+// analyzer-contract: sdk-significant-results negative
+func discardQueueFull(queue *schedule.Queue[int]) { queue.TrySend(1) }

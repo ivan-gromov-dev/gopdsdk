@@ -83,6 +83,9 @@ const (
 	ContractClose              ContractKind = "close"
 	ContractUpdateOnly         ContractKind = "update-only"
 	ContractArgumentBound      ContractKind = "argument-bound"
+	ContractErrorHandling      ContractKind = "error-handling"
+	ContractSignificantResult  ContractKind = "significant-result"
+	ContractValue              ContractKind = "value"
 	ContractAvailability       ContractKind = "availability"
 )
 
@@ -232,7 +235,7 @@ func (policy SymbolPolicy) valid() bool {
 
 func (kind ContractKind) valid() bool {
 	switch kind {
-	case ContractReplacement, ContractOptionalCapability, ContractCallbackScope, ContractOwnedHandle, ContractBorrowedHandle, ContractRetention, ContractClose, ContractUpdateOnly, ContractArgumentBound, ContractAvailability:
+	case ContractReplacement, ContractOptionalCapability, ContractCallbackScope, ContractOwnedHandle, ContractBorrowedHandle, ContractRetention, ContractClose, ContractUpdateOnly, ContractArgumentBound, ContractErrorHandling, ContractSignificantResult, ContractValue, ContractAvailability:
 		return true
 	default:
 		return false

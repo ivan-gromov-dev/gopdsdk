@@ -7,6 +7,13 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 8 intraprocedural ownership and retention analysis on
+  2026-09-09. New default ownership rules cover locally proven leaks, double
+  close, use after close, borrowed close, retained close, and invalid close
+  order, including related retaining-call locations. Unknown transfers remain
+  silent; deferred cleanup, aliases, branches, menu-image clearing, and
+  aggregate table/tilemap ownership have Windows unit coverage.
+
 - Completed analyzer Step 7 error, result, and value-contract analysis on
   2026-09-09. Six package-identity-aware default rules diagnose discarded SDK
   errors and inventoried significant results, direct wrapped-sentinel and typed

@@ -624,6 +624,20 @@ Exit criterion: the rule pack finds SDK-specific mistakes that ordinary
 
 ### Step 8 — Build intraprocedural ownership and retention analysis
 
+Complete: the ownership provider models local owned, borrowed, wrapper,
+aggregate, closed, escaped, and deferred-cleanup states over SSA control-flow
+paths. Default ownership rules report definite leaks, double close, use after
+close, borrowed close, retained close, and dependency-order violations.
+Documented clear, replace, remove, owner-close, and unknown-transfer operations
+discharge or invalidate obligations; unknown escapes remain silent. Invalid
+order diagnostics carry the retaining call as related information.
+
+The Windows analyzer and full repository unit suites cover branches, early
+returns, aliases, deferred cleanup, borrowed frames, menu retention, and
+aggregate table/tilemap order on 2026-09-09. This is static analyzer evidence;
+native runtime state transitions remain covered by their existing runtime unit
+tests, with no new Simulator or physical-device claim.
+
 Model owned, borrowed, wrapper, aggregate, closed, and unknown handle states
 within one function.
 

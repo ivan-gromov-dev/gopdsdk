@@ -173,14 +173,18 @@ loops, and cross-package ownership remain outside these local proofs.
 | `capability-unproven-assertion` | warning, likely confidence | Another function checks this capability, but the analyzer cannot prove that check protects this assertion. |
 | `capability-impossible-assertion` | error | A single-value assertion is known to fail if reached, including a failed guard, nil interface, or incompatible boxed concrete value. |
 | `capability-redundant-check` | information | A comma-ok check has an already established result on this path. |
+| `capability-video-availability` | error | `Videos` is used for a target or configured compatibility floor that predates its versioned contract. |
 
 Checks recognize dominating comma-ok guards, early returns, type switches,
 boolean negation/equality, compatible interface wrappers, and simple local
 boolean helpers up to eight inference edges. Read-only closure captures can
 inherit an enclosing guard when their captured cell has a single initialization
 and no address escape. SSA value identity invalidates facts after reassignment;
-unknown predicates, mutable captures, and cross-package helpers do not establish
-a successful guard. Helpers returning a checked capability plus an error remain
+unknown predicates and mutable captures do not establish a successful guard.
+An exported cross-package boolean helper establishes a guard only when it returns
+one unchanged parameter's direct capability check (or its negation); multiple
+returns, memory loads, opaque calls, and function values publish no fact.
+Helpers returning a checked capability plus an error remain
 valid without another type assertion. Known checked failures should use the
 application's unsupported-capability fallback. No automatic fixes are generated.
 Checks in other functions, including a game's `Init`, may require lifecycle or
@@ -189,9 +193,14 @@ explicitly lower-confidence warning rather than a proven error. That warning
 still meets the CLI's default warning failure threshold.
 
 Capability types come from the loaded SDK package, including re-exporting
-wrappers, rather than the installed official SDK or the analyzer's binary.
-Missing Go API symbols remain package-load errors. These checks do not yet
-validate an official SDK version or a declared compatibility floor.
+wrappers, rather than the analyzer binary. Missing Go API symbols remain
+package-load errors. `--gopdsdk-floor vMAJOR.MINOR.PATCH` declares the oldest
+gopdsdk release the game supports; `--playdate-sdk MAJOR.MINOR.PATCH` supplies
+the configured official SDK version. The equivalent `.gopdsdk-check.json`
+fields are `gopdsdkFloor` and `playdateSDK`. When set, the analyzer compares
+uses against the contract inventory's gopdsdk introduction, minimum verified
+official-SDK version, and target metadata. Omitted floors make no unsupported
+inference from the analyzer binary or the host toolchain.
 
 ## Context capabilities
 

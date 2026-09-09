@@ -16,6 +16,8 @@ func TestLoadRepositoryConfigValidatesAndNormalizes(t *testing.T) {
   "target": "device",
   "buildTags": ["zeta", "alpha", "zeta"],
   "tests": true,
+	"gopdsdkFloor": "v1.0.0",
+	"playdateSDK": "3.1.1",
   "patterns": ["./game", "./tools/..."]
 }`)
 	config, err := loadRepositoryConfig(root, "", false)
@@ -38,12 +40,14 @@ func TestLoadRepositoryConfigValidatesAndNormalizes(t *testing.T) {
 
 func TestLoadRepositoryConfigRejectsMalformedValues(t *testing.T) {
 	for name, content := range map[string]string{
-		"unknown schema": `{"schema":"gopdsdk-check-config/v2"}`,
-		"unknown field":  `{"schema":"gopdsdk-check-config/v1","targte":"device"}`,
-		"invalid target": `{"schema":"gopdsdk-check-config/v1","target":"host"}`,
-		"empty patterns": `{"schema":"gopdsdk-check-config/v1","patterns":[]}`,
-		"invalid tag":    `{"schema":"gopdsdk-check-config/v1","buildTags":["two words"]}`,
-		"trailing value": `{"schema":"gopdsdk-check-config/v1"} {}`,
+		"unknown schema":        `{"schema":"gopdsdk-check-config/v2"}`,
+		"unknown field":         `{"schema":"gopdsdk-check-config/v1","targte":"device"}`,
+		"invalid target":        `{"schema":"gopdsdk-check-config/v1","target":"host"}`,
+		"empty patterns":        `{"schema":"gopdsdk-check-config/v1","patterns":[]}`,
+		"invalid tag":           `{"schema":"gopdsdk-check-config/v1","buildTags":["two words"]}`,
+		"trailing value":        `{"schema":"gopdsdk-check-config/v1"} {}`,
+		"invalid gopdsdk floor": `{"schema":"gopdsdk-check-config/v1","gopdsdkFloor":"1.0.0"}`,
+		"invalid Playdate SDK":  `{"schema":"gopdsdk-check-config/v1","playdateSDK":"next"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()

@@ -206,15 +206,17 @@ targets. Its frozen flags currently include `--config`, `--format text|json`,
 `--profile default|experimental|deep`, `--rules`, `--categories`,
 `--exclude-rules`, repeatable `--severity selector=severity`, and
 `--fail-on error|warning|performance|information|none`, `--baseline`,
-`--generated exclude|include`, and repeatable `--changed-file`; package
+`--generated exclude|include`, repeatable `--changed-file`,
+`--gopdsdk-floor`, and `--playdate-sdk`; package
 patterns are positional and default to `./...`. Text and structured output are
 implemented and independently tested. The kernel preserves deterministic
 related ranges and atomic suggested-edit groups. Repository defaults are read
 from `.gopdsdk-check.json`, or from the explicit `--config` path, using schema
 `gopdsdk-check-config/v1`. The configuration may set `format`, `target`,
 `buildTags`, `tests`, `patterns`, `profile`, `rules`, `categories`,
-`excludeRules`, `severities`, `failOn`, `baseline`, `generated`, and
-`changedFiles`; explicit CLI flags and positional patterns
+`excludeRules`, `severities`, `failOn`, `baseline`, `generated`,
+`changedFiles`, `gopdsdkFloor`, and `playdateSDK`; explicit CLI flags and
+positional patterns
 take precedence, followed by repository values and then built-in defaults.
 Unknown schemas, fields, invalid values, duplicate JSON documents, and a
 missing explicitly named file are configuration errors. A missing implicit
@@ -481,13 +483,16 @@ incomplete call-path conclusions remain warnings or silent.
 
 ### Step 5 — Add optional-capability and availability facts
 
-In progress (updated 2026-09-04): the production registry enables unchecked and
+Complete (2026-09-09): the production registry enables unchecked and
 provably impossible optional-capability assertions as errors, and redundant or
 contradictory comma-ok checks as information, on all analysis targets. A related
 check on an unresolved path remains a `likely` warning. Dominator facts cover
 early exits, type switches, boolean guards, local predicate helpers, interface
 wrappers, loops, and read-only captured values. Bounded caller facts cover
 private helpers only when every static caller supplies the proven capability.
+Exported boolean predicate helpers can publish a bounded `go/analysis` fact
+containing one unchanged parameter and one direct capability assertion;
+multiple returns, memory loads, opaque calls, and function values publish no fact.
 Application lifecycle facts connect a successful `Init` requirement to
 `Update` or `HandleLifecycle` only for the concrete game returned by `New`;
 explicit manual callback calls, escaped helpers, mutable sentinels, reassignment,
@@ -498,16 +503,18 @@ later callback assertion. No potentially panicking quick fixes are generated.
 Unit fixtures cover local inference, caller and lifecycle propagation, fallback
 state, and conservative invalidation cases. External CLI
 fixtures verify JSON findings, failure exits, suppression, and shared/Simulator/
-device selection. Full repository tests and vet pass on Windows. This evidence
+device selection. Multi-version fixtures cover configured gopdsdk floors and
+official Playdate SDK versions for the versioned video-capability metadata.
+Full repository tests and vet pass on Windows. This evidence
 does not establish Simulator or hardware readiness.
 The repository examples produce no capability findings after lifecycle, caller,
 captured-value, and fallback-state provenance is applied.
 
-Remaining: explicit version/target availability metadata, configured official
-SDK and compatibility-floor checks, multi-version acceptance fixtures, and
-bounded exported facts for cross-package capability helpers. Currently the
-loaded Go package supplies type identities; missing API symbols remain Go load
-errors, and a verified toolchain version is not treated as an API minimum.
+The contract inventory now records gopdsdk introduction and minimum verified
+official-SDK versions alongside target availability. `--gopdsdk-floor` and
+`--playdate-sdk`, or their repository configuration equivalents, enable the
+corresponding checks. Currently the loaded Go package still supplies type
+identities, and missing API symbols remain Go load errors.
 
 Model the optional slices exposed through `playdate.Context`.
 

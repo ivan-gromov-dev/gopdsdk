@@ -7,17 +7,22 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
-- Started Step 5 optional-capability analysis on 2026-09-02. Four rules report
+- Completed Step 5 optional-capability and availability analysis on 2026-09-09.
+  Four flow rules report
   unchecked assertions, proven failed assertions, and already known comma-ok
   results. Local guards, early returns, type switches, bounded predicate
   helpers, wrappers, and immutable captured cells carry capability facts;
   reassignment and opaque/mutable paths invalidate them. No automatic fixes
   are generated. Assertions with related checks in another function produce
-  `likely` warnings instead of claiming a proven error; eleven such warnings
-  remain in repository examples pending lifecycle/caller facts.
-  Windows unit and external-consumer CLI fixtures cover all
-  targets and suppression; the full repository suite and vet pass. Version
-  availability, official SDK floors, and cross-package helper facts remain open.
+  `likely` warnings instead of claiming a proven error. Lifecycle, bounded
+  caller, fallback-state, and exported boolean-helper facts preserve proven
+  guards without accepting opaque cross-package behavior. The versioned
+  contract inventory and `capability-video-availability` rule validate declared
+  gopdsdk compatibility floors and configured official SDK versions for the
+  Simulator/device availability contract. Windows unit and external-consumer
+  CLI fixtures cover target selection, suppression, and multi-version outcomes;
+  the full repository suite and vet pass. No Simulator or hardware readiness is
+  claimed.
 
 - Added the initial Step 4 application/lifecycle pack on 2026-09-02: eleven
   default error rules cover application entry, undeliverable lifecycle methods,

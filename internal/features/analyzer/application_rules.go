@@ -28,7 +28,7 @@ func applicationRuleRegistrations() []Registration {
 		return result, PassContext(pass).Err()
 	}}
 	var registrations []Registration
-	for _, id := range []RuleID{"application-entry", "application-lifecycle-shape", "application-scheduler-update-boundary", "application-nested-stencil", "application-nested-scheduler", "application-sprite-callback-close", "application-termination-resource-leak", "lifetime-framebuffer-escape", "lifetime-bitmap-data-escape", "lifetime-microphone-samples-escape", "lifetime-audio-render-buffer-escape"} {
+	for _, id := range []RuleID{"application-entry", "application-lifecycle-shape", "application-scheduler-update-boundary", "application-nested-stencil", "application-nested-scheduler", "application-sprite-callback-close", "application-termination-resource-leak", "lifetime-framebuffer-escape", "lifetime-bitmap-data-escape", "lifetime-microphone-samples-escape", "lifetime-audio-render-buffer-escape", "lifetime-framebuffer-possible-escape", "lifetime-bitmap-data-possible-escape", "lifetime-microphone-samples-possible-escape", "lifetime-audio-render-buffer-possible-escape"} {
 		registrations = append(registrations, Registration{RuleID: id, Analyzer: &analysis.Analyzer{Name: "application_" + strings.ReplaceAll(string(id), "-", "_"), Doc: "report a proven application contract violation", Requires: []*analysis.Analyzer{provider}, Run: func(pass *analysis.Pass) (any, error) {
 			for _, diagnostic := range pass.ResultOf[provider].(applicationFindings)[id] {
 				pass.Report(diagnostic)
@@ -246,7 +246,7 @@ func checkApplicationPaths(pass *analysis.Pass, functions []*ssa.Function, resul
 						if callMethod(call, playdatePackage, "Sprite", method) {
 							for _, parameter := range callback.Params {
 								if sdkNamed(parameter.Type(), playdatePackage, "Sprite") {
-									checkScopedValue(parameter, "application-sprite-callback-close", result, make(map[ssa.Value]bool))
+									checkScopedValue(parameter, "application-sprite-callback-close", result, make(map[ssa.Value]bool), parameter.Parent())
 								}
 							}
 						}
@@ -254,7 +254,7 @@ func checkApplicationPaths(pass *analysis.Pass, functions []*ssa.Function, resul
 					for _, parameter := range callback.Params {
 						id := scopedCallbackRule(call, parameter)
 						if id != "" {
-							checkScopedValue(parameter, id, result, make(map[ssa.Value]bool))
+							checkScopedValue(parameter, id, result, make(map[ssa.Value]bool), parameter.Parent())
 						}
 					}
 					// A task can only execute during its scheduler's Update. Restrict
@@ -359,7 +359,7 @@ func sameCapturedReceiver(binding, receiver ssa.Value) bool {
 
 // Propagate only identity-preserving operations. Copies, unknown calls, joins,
 // and heap aliases are deliberately not treated as proof of an escape.
-func checkScopedValue(value ssa.Value, id RuleID, result applicationFindings, seen map[ssa.Value]bool) {
+func checkScopedValue(value ssa.Value, id RuleID, result applicationFindings, seen map[ssa.Value]bool, boundary *ssa.Function) {
 	if seen[value] || value.Referrers() == nil {
 		return
 	}
@@ -367,11 +367,37 @@ func checkScopedValue(value ssa.Value, id RuleID, result applicationFindings, se
 	for _, ref := range *value.Referrers() {
 		switch ref := ref.(type) {
 		case *ssa.ChangeType:
-			checkScopedValue(ref, id, result, seen)
+			checkScopedValue(ref, id, result, seen, boundary)
+		case *ssa.Convert:
+			if _, ok := ref.Type().Underlying().(*types.Slice); ok {
+				checkScopedValue(ref, id, result, seen, boundary)
+			}
 		case *ssa.MakeInterface:
-			checkScopedValue(ref, id, result, seen)
+			checkScopedValue(ref, id, result, seen, boundary)
 		case *ssa.Slice:
-			checkScopedValue(ref, id, result, seen)
+			checkScopedValue(ref, id, result, seen, boundary)
+		case *ssa.Phi:
+			checkScopedValue(ref, id, result, seen, boundary)
+		case *ssa.MakeClosure:
+			if closureEscapes(ref) {
+				result.add(id, ref.Pos(), "callback-scoped value is captured by a closure that outlives the callback; copy required data before capture")
+			}
+		case *ssa.Return:
+			if ref.Parent() == boundary {
+				result.add(id, ref.Pos(), "callback-scoped value is returned from its callback; copy required data before returning")
+			}
+		case *ssa.MapUpdate:
+			if ref.Value == value || ref.Key == value {
+				result.add(id, ref.Pos(), "callback-scoped value is inserted into a map; copy required data before insertion")
+			}
+		case *ssa.Send:
+			if ref.X == value {
+				result.add(id, ref.Pos(), "callback-scoped value is sent on a channel; copy required data before sending")
+			}
+		case *ssa.Go:
+			if argumentOf(ref.Common(), value) {
+				result.add(id, ref.Pos(), "callback-scoped value is passed to a goroutine that can outlive the callback; copy required data before starting it")
+			}
 		case *ssa.Store:
 			if ref.Val != value || id == "application-sprite-callback-close" {
 				continue
@@ -381,12 +407,30 @@ func checkScopedValue(value ssa.Value, id RuleID, result applicationFindings, se
 			}
 		case *ssa.Call:
 			call := ref.Common()
+			if builtin, ok := call.Value.(*ssa.Builtin); ok && builtin.Name() == "append" {
+				// append into a nil slice is the standard explicit slice copy.
+				// Other destinations may reuse storage that aliases callback data.
+				fresh := false
+				if len(call.Args) > 0 {
+					constant, ok := call.Args[0].(*ssa.Const)
+					fresh = ok && constant.IsNil()
+				}
+				if !fresh {
+					checkScopedValue(ref, id, result, seen, boundary)
+				}
+				continue
+			}
 			if callee := call.StaticCallee(); callee != nil && callee.Pkg == ref.Parent().Pkg && len(seen) < 128 {
 				for index, argument := range call.Args {
 					if argument == value && index < len(callee.Params) {
-						checkScopedValue(callee.Params[index], id, result, seen)
+						checkScopedValue(callee.Params[index], id, result, seen, boundary)
+						if helperReturnsParameter(callee, callee.Params[index]) {
+							checkScopedValue(ref, id, result, seen, boundary)
+						}
 					}
 				}
+			} else if argumentOf(call, value) && !scopedReadOnlyCall(call, value) {
+				result.add(possibleLifetimeRule(id), ref.Pos(), "callback-scoped value is passed to a call whose retention behavior is unknown")
 			}
 			if id == "application-sprite-callback-close" {
 				if call.IsInvoke() && call.Value == value && callMethod(call, playdatePackage, "Sprite", "Close") {
@@ -398,7 +442,7 @@ func checkScopedValue(value ssa.Value, id RuleID, result applicationFindings, se
 				if ref.Referrers() != nil {
 					for _, use := range *ref.Referrers() {
 						if extract, ok := use.(*ssa.Extract); ok && extract.Index == 0 {
-							checkScopedValue(extract, id, result, seen)
+							checkScopedValue(extract, id, result, seen, boundary)
 						}
 					}
 				}
@@ -407,10 +451,70 @@ func checkScopedValue(value ssa.Value, id RuleID, result applicationFindings, se
 	}
 }
 
+func helperReturnsParameter(function *ssa.Function, parameter *ssa.Parameter) bool {
+	for _, block := range function.Blocks {
+		for _, instruction := range block.Instrs {
+			returned, ok := instruction.(*ssa.Return)
+			if !ok {
+				continue
+			}
+			for _, value := range returned.Results {
+				if value == parameter {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func closureEscapes(closure *ssa.MakeClosure) bool {
+	if closure.Referrers() == nil {
+		return false
+	}
+	for _, ref := range *closure.Referrers() {
+		switch ref := ref.(type) {
+		case *ssa.Return, *ssa.Go, *ssa.Send, *ssa.MapUpdate:
+			return true
+		case *ssa.Store:
+			if ref.Val == closure && callbackExternalAddress(ref.Addr) {
+				return true
+			}
+		case *ssa.Call:
+			if ref.Common().Value != closure {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func argumentOf(call *ssa.CallCommon, value ssa.Value) bool {
+	for _, argument := range call.Args {
+		if argument == value {
+			return true
+		}
+	}
+	return false
+}
+
+func scopedReadOnlyCall(call *ssa.CallCommon, value ssa.Value) bool {
+	if builtin, ok := call.Value.(*ssa.Builtin); ok {
+		return builtin.Name() == "len" || builtin.Name() == "cap" || builtin.Name() == "copy"
+	}
+	return call.IsInvoke() && call.Value == value
+}
+
+func possibleLifetimeRule(id RuleID) RuleID {
+	return RuleID(strings.TrimSuffix(string(id), "-escape") + "-possible-escape")
+}
+
 func callbackExternalAddress(value ssa.Value) bool {
 	switch value := value.(type) {
 	case *ssa.Global, *ssa.FreeVar, *ssa.Parameter:
 		return true
+	case *ssa.Alloc:
+		return value.Heap
 	case *ssa.FieldAddr:
 		return callbackExternalAddress(value.X)
 	case *ssa.IndexAddr:

@@ -7,6 +7,15 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 6 callback-lifetime flow on 2026-09-09. The four
+  default lifetime rules now diagnose definite return, escaping-store,
+  container, closure, channel, goroutine, alias, subslice, and bounded local
+  helper escapes for framebuffer, bitmap-data, microphone-sample, PCM, and
+  generator buffers. Explicit `copy` and nil-destination `append` operations
+  break the borrowed-data flow. Four opt-in `likely` warning rules cover calls
+  whose retention behavior cannot be proved locally. The Windows analyzer and
+  full repository unit suites pass; no runtime expiry was observed or claimed.
+
 - Updated analyzer infrastructure to `golang.org/x/tools v0.50.0` and
   `golang.org/x/mod v0.41.0`; the resolved graph now uses
   `golang.org/x/sync v0.23.0`. The full Windows unit suite and `go vet ./...`

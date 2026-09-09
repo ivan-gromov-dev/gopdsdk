@@ -126,6 +126,37 @@ import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 var saved []byte
 func draw(g playdate.FramebufferGraphics) { g.WithFramebuffer(func(f playdate.Framebuffer) error { b,e:=f.Bytes(); saved=append([]byte(nil),b...); return e }) }
 `, false, nil},
+		{"framebuffer return through helper", `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+var saved []byte
+func retain(b []byte) []byte { return b }
+func draw(g playdate.FramebufferGraphics) { g.WithFramebuffer(func(f playdate.Framebuffer) error { b,_:=f.Bytes(); saved=retain(b); return nil }) }
+`, false, []RuleID{"lifetime-framebuffer-escape"}},
+		{"framebuffer map insertion", `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+var saved=map[string][]byte{}
+func draw(g playdate.FramebufferGraphics) { g.WithFramebuffer(func(f playdate.Framebuffer) error { b,_:=f.Bytes(); saved["frame"]=b; return nil }) }
+`, false, []RuleID{"lifetime-framebuffer-escape"}},
+		{"framebuffer closure capture", `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+var later func() int
+func draw(g playdate.FramebufferGraphics) { g.WithFramebuffer(func(f playdate.Framebuffer) error { b,_:=f.Bytes(); later=func()int{return len(b)}; return nil }) }
+`, false, []RuleID{"lifetime-framebuffer-escape"}},
+		{"framebuffer goroutine escape", `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+func use([]byte) {}
+func draw(g playdate.FramebufferGraphics) { g.WithFramebuffer(func(f playdate.Framebuffer) error { b,_:=f.Bytes(); go use(b); return nil }) }
+`, false, []RuleID{"lifetime-framebuffer-escape"}},
+		{"framebuffer subslice escape", `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+var saved []byte
+func draw(g playdate.FramebufferGraphics) { g.WithFramebuffer(func(f playdate.Framebuffer) error { b,_:=f.Bytes(); saved=b[:1]; return nil }) }
+`, false, []RuleID{"lifetime-framebuffer-escape"}},
+		{"framebuffer copy builtin", `package game
+import "github.com/ivan-gromov-dev/gopdsdk/playdate"
+var saved=make([]byte,400*240/8)
+func draw(g playdate.FramebufferGraphics) { g.WithFramebuffer(func(f playdate.Framebuffer) error { b,_:=f.Bytes(); copy(saved,b); return nil }) }
+`, false, nil},
 		{"bitmap escape", `package game
 import "github.com/ivan-gromov-dev/gopdsdk/playdate"
 var saved playdate.BitmapData

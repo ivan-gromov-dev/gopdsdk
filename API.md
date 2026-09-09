@@ -139,6 +139,10 @@ default errors; unresolved dispatch and ownership do not produce an error.
 | `lifetime-bitmap-data-escape` | A registered bitmap-data callback stores its view, image bytes, or mask bytes outside the callback. |
 | `lifetime-microphone-samples-escape` | A recording callback retains its samples outside the callback. |
 | `lifetime-audio-render-buffer-escape` | A PCM or generator render callback retains its output slices outside the callback. |
+| `lifetime-framebuffer-possible-escape` | Experimental: framebuffer data reaches a call whose retention behavior cannot be proved. |
+| `lifetime-bitmap-data-possible-escape` | Experimental: bitmap data reaches a call whose retention behavior cannot be proved. |
+| `lifetime-microphone-samples-possible-escape` | Experimental: microphone samples reach a call whose retention behavior cannot be proved. |
+| `lifetime-audio-render-buffer-possible-escape` | Experimental: a render buffer reaches a call whose retention behavior cannot be proved. |
 
 Game method mismatches that already prevent Go type checking remain package-load
 errors. The analyzer follows at most eight local static call edges and 4096

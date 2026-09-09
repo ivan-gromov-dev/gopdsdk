@@ -542,6 +542,19 @@ capability inference remains bounded and reports its confidence.
 
 Introduce lifetime labels and escape checks for transient native data.
 
+Complete: the four callback-scope rules now propagate borrowed values and
+derived slices through conversions, interface boxes, phi joins, subslices,
+`append`, and bounded same-package helpers. Definite returns, escaping stores,
+map insertion, closure capture, channel send, and goroutine handoff are default
+errors. `copy` and `append` into a nil destination terminate the borrowed-data
+flow. Calls without a locally provable retention contract terminate proof and
+have separate opt-in `likely` warning rules, so diagnostics describe static
+escape evidence rather than observed runtime expiry.
+
+The Windows analyzer and full repository unit suites pass on 2026-09-09. This
+is static analyzer evidence only; no Simulator or physical-device runtime
+expiry is claimed.
+
 Rule scope:
 
 - `Framebuffer`, `BitmapData`, `MicrophoneSamples`, PCM render buffers,

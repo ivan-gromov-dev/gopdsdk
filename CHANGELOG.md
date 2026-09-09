@@ -7,6 +7,11 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Updated analyzer infrastructure to `golang.org/x/tools v0.50.0` and
+  `golang.org/x/mod v0.41.0`; the resolved graph now uses
+  `golang.org/x/sync v0.23.0`. The full Windows unit suite and `go vet ./...`
+  pass with Go 1.26.5.
+
 - Completed Step 5 optional-capability and availability analysis on 2026-09-09.
   Four flow rules report
   unchecked assertions, proven failed assertions, and already known comma-ok

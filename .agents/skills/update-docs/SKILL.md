@@ -5,33 +5,23 @@ description: Synchronize gopdsdk public docs, roadmap, changelog, migrations, an
 
 # Update Docs
 
-Follow `AGENTS.md`. Treat implementation and verification output as evidence.
-Do not change code, generated files, tests, or native assets.
+Follow `AGENTS.md`. Change documentation only; treat verification output as the
+evidence ceiling.
 
 ## Workflow
 
-1. Inspect `git status`, the relevant diff, current documentation, and the
-   exact verification or acceptance results. Preserve unrelated user edits.
-2. Identify the public behavior that actually changed, its active roadmap
-   scope, and the strongest verified evidence level. Ask only when a missing
-   fact would materially change a claim.
-3. Update only applicable files under the `AGENTS.md` routing. Use
-   `MIGRATING.md` only for required user action after an intentional breaking
-   change. Include exact dates, tool versions, and artifact sizes when known.
-4. Keep evidence at its verified level. Never infer visual or hardware
-   acceptance from builds, probes, CI, Docker, or dry-runs. Record physical
-   results only when explicitly confirmed by the user, and name relevant skipped
-   gates such as soak, performance, memory growth, or device-log inspection.
-5. Search for stale scope names, descriptions, dates, versions, and contradictory
-   claims. Run `git diff --check`, inspect the final docs diff, and run broader
-   checks only when generation or the request requires them.
+1. Inspect status, relevant diff/docs, and exact verification results.
+2. Identify changed public behavior, active roadmap scope, and evidence level.
+3. Follow `AGENTS.md` routing. Use `MIGRATING.md` only for required action after
+   an intentional break; include exact versions/dates when known.
+4. Record physical results only when user-confirmed. Name relevant unrun gates.
+5. Search for stale or contradictory claims; inspect the diff and run
+   `git diff --check`.
 
 ## Boundaries
 
-- Use `$release` for release declarations, release-only compatibility evidence,
-  readiness audits, or publishing.
-- Do not commit or modify hosted state unless explicitly requested.
+Use `$release` for release declarations, release-only evidence, or publishing.
 
 ## Handoff
 
-Report changed docs, recorded evidence, unverified gates, and `git diff --check`.
+Report changed docs, evidence level, and unrun gates.

@@ -7,6 +7,16 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 10 opt-in frame-loop, audio, and memory-risk analysis
+  on 2026-09-10. Experimental and deep profiles now map exact game update,
+  registered sprite/completion, and audio render roots through direct local
+  calls and report structural allocation, I/O/resource loading, unbounded or
+  blocking work, and stricter audio-callback risks at `performance` severity.
+  Diagnostics include call paths and require runtime measurement; fixed arrays,
+  bounded range work, and initialization-only allocation remain silent. Windows
+  analyzer and full repository unit suites pass; no runtime performance,
+  Simulator, or physical-device evidence is claimed.
+
 - Completed analyzer Step 9 bounded interprocedural analysis on 2026-09-10.
   The `deep` profile now propagates owned and borrowed results plus parameter
   close and transfer effects through direct, known method/generic, small

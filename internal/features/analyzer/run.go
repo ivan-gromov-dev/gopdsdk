@@ -51,6 +51,7 @@ func DefaultCheckOptions() (CheckOptions, error) {
 	registrations = append(registrations, capabilityRuleRegistrations()...)
 	registrations = append(registrations, resultRuleRegistrations()...)
 	registrations = append(registrations, ownershipRuleRegistrations()...)
+	registrations = append(registrations, performanceRuleRegistrations()...)
 	registry, err := NewRegistry(catalog, registrations...)
 	if err != nil {
 		return CheckOptions{}, err

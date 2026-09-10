@@ -194,6 +194,27 @@ the helper call as related information; budget exhaustion emits the
 lower-confidence `ownership-summary-budget` information diagnostic. The
 default profile does not apply these ownership summaries.
 
+The experimental and deep profiles also enable structural performance rules.
+They map direct, statically resolved local calls from `Game.Update`, sprite draw,
+update, and collision callbacks, completion callbacks, and PCM or generator
+render callbacks. These findings use the separate `performance` severity and do
+not assert an exact allocation count, frame time, heap or stack bound, garbage-
+collection pause, audio underrun, or power result.
+
+| Rule | Structural condition requiring measurement |
+| --- | --- |
+| `performance-frame-allocation` | Allocation-shaped `make`, `new`, slice/map construction, append, string construction, addressable composite construction, or reflection is reachable from a frame root. |
+| `performance-frame-resource-load` | A resource load, file operation, or network operation is reachable from a frame root. |
+| `performance-frame-unbounded-work` | An unconditional loop, recursion, loop-local defer, loop growth, channel/select operation, explicit GC, or known blocking operation is reachable from a frame root. |
+| `performance-audio-callback-risk` | Any allocation, blocking, I/O, GC, recursion, growth, or work without a visible bound above is reachable from a PCM or generator callback. |
+
+Fixed arrays and bounded iteration over them are not allocation findings, and
+work reachable only from initialization is not a hot path. Diagnostics include
+the local call path and point back to the callback root. Unknown dispatch and
+cross-package calls terminate this map. Use runtime probes, including
+`playdate/diagnostics` where applicable, before treating a finding as release
+evidence.
+
 ## Error contracts
 
 `gopdsdk check` applies SDK-specific result rules only to calls whose declaring

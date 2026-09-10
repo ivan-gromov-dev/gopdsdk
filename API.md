@@ -215,6 +215,23 @@ cross-package calls terminate this map. Use runtime probes, including
 `playdate/diagnostics` where applicable, before treating a finding as release
 evidence.
 
+The default profile also validates deterministic workspace inputs for Simulator
+and device targets. These checks read files only; they do not invoke `pdc`,
+convert assets, or claim that the Simulator or a device can load them.
+
+| Rule | Proven condition checked |
+| --- | --- |
+| `workspace-module-version` | An application module omits the gopdsdk requirement or uses the non-release placeholder `v0.0.0`. The gopdsdk repository itself is exempt. |
+| `workspace-manifest` | An application `pdxinfo` has malformed or duplicate fields, lacks required identity/version fields, uses an invalid bundle ID or build number, or has an unsafe `imagePath`. |
+| `workspace-resource-path` | A resource is a symbolic link, has an unsafe package path, collides with another path after case folding, or a literal SDK load path escapes the package namespace. |
+| `workspace-missing-resource` | A literal SDK bitmap, table, font, audio, MIDI, or video load path has no matching file under `resources`, differs in case, or `imagePath` lacks a required launcher image. |
+
+Resource lookup accepts either an exact packaged filename or the extensionless
+name used by Playdate loaders. Dynamic paths and binary-format validity remain
+outside the static proof. There is no migration diagnostic while the v1 public
+API has no deprecated or renamed symbol inventory; future deprecations must add
+versioned rules rather than guessing intent.
+
 ## Error contracts
 
 `gopdsdk check` applies SDK-specific result rules only to calls whose declaring

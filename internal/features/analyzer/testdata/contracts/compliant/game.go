@@ -159,6 +159,7 @@ func enqueue(queue *schedule.Queue[int]) bool { return queue.TrySend(1) }
 func (*game) Init(playdate.Context) error { return nil }
 
 // analyzer-contract: scheduler-update-boundary positive
+// analyzer-contract: hot-path-performance positive
 func (game *game) Update(playdate.Context) (bool, error) {
 	_, err := game.scheduler.Update()
 	return true, err

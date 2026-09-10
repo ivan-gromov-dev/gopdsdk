@@ -718,6 +718,27 @@ mode retains predictable latency and precision.
 
 ### Step 10 — Add frame-loop, audio, and memory-risk analysis
 
+Complete: the experimental and deep profiles build a deterministic local hot-
+path map rooted at the exact `Game.Update` signature, registered sprite and
+completion callbacks, and PCM or generator render callbacks. Four performance-
+severity rules classify visible allocation shapes and string/reflection work,
+resource and file/network I/O, explicit GC, recursion, blocking channel/select
+operations, loop-local defer, unconditional loops, and slice or map growth.
+Audio roots collapse those risks into a stricter audio-callback diagnostic.
+
+Direct local helper paths are included in diagnostic messages with the root as
+related information. Fixed arrays and bounded range iteration remain silent,
+as does allocation reachable only from initialization. Unknown dispatch and
+cross-package calls stop propagation instead of becoming speculative findings.
+All wording requires runtime measurement and makes no exact time, allocation,
+heap, stack, GC, underrun, or power claim.
+
+The Windows analyzer and full repository unit suites pass on 2026-09-10.
+Fixtures cover direct and helper-driven frame work, named audio callbacks,
+one-time initialization, and fixed-capacity storage. This is static analyzer
+evidence only; no benchmark number, Simulator, audio device, or physical-device
+runtime behavior is claimed.
+
 Build an opt-in hot-path map rooted at `Game.Update`, sprite callbacks,
 frame-delivered completion callbacks, and audio render callbacks.
 

@@ -16,6 +16,14 @@ var escapedBitmapData playdate.BitmapData
 var escapedMicrophoneSamples playdate.MicrophoneSamples
 var escapedRenderBuffer []int16
 
+type performanceGame struct{}
+
+// analyzer-contract: hot-path-performance negative
+func (performanceGame) Update(playdate.Context) (bool, error) {
+	_ = make([]byte, 8)
+	return true, nil
+}
+
 // analyzer-contract: device-scheduler-replacement negative
 func unboundedWork() {
 	channel := make(chan struct{})

@@ -78,6 +78,7 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	failOn := flags.String("fail-on", "warning", "exit threshold: error, warning, performance, information, or none")
 	baselinePath := flags.String("baseline", "", "path to an adoption baseline")
 	generated := flags.String("generated", "exclude", "generated sources: exclude or include")
+	fix := flags.String("fix", "none", "safe fixes: none, preview, or apply")
 	gopdsdkFloor := flags.String("gopdsdk-floor", "", "oldest supported gopdsdk release")
 	playdateSDK := flags.String("playdate-sdk", "", "configured official Playdate SDK version")
 	var changedValues repeatedFlag
@@ -173,6 +174,12 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	if *format != "text" && *format != "json" {
 		return commandError(ExitConfiguration, fmt.Errorf("invalid check format %q", *format))
 	}
+	if fixMode(*fix) != fixNone && fixMode(*fix) != fixPreview && fixMode(*fix) != fixApply {
+		return commandError(ExitConfiguration, fmt.Errorf("invalid fix mode %q", *fix))
+	}
+	if *format == "json" && fixMode(*fix) != fixNone {
+		return commandError(ExitConfiguration, errors.New("--fix requires text output; JSON already contains previewable edit groups"))
+	}
 	targets, err := checkTargets(*target)
 	if err != nil {
 		return commandError(ExitConfiguration, err)
@@ -265,6 +272,20 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		return commandError(ExitInternal, err)
 	}
 	applySeverity(&report, severityByRule)
+	fixedFiles, err := prepareFixes(options.ModuleRoot, report)
+	if err != nil {
+		return commandError(ExitInternal, err)
+	}
+	if fixMode(*fix) != fixNone && len(fixedFiles) != 0 {
+		if err := validateFixedFiles(ctx, options.ModuleRoot, fixedFiles, patterns, buildTags, *tests, targets); err != nil {
+			return commandError(ExitInternal, fmt.Errorf("validate fixes: %w", err))
+		}
+		if fixMode(*fix) == fixApply {
+			if err := writeFixedFiles(fixedFiles); err != nil {
+				return commandError(ExitInternal, err)
+			}
+		}
+	}
 	if *format == "json" {
 		data, err := report.JSON()
 		if err == nil {
@@ -275,6 +296,15 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		}
 	} else if err := writeTextReport(stdout, report); err != nil {
 		return commandError(ExitInternal, err)
+	}
+	if fixMode(*fix) == fixPreview {
+		if err := writeFixPreview(stdout, fixedFiles); err != nil {
+			return commandError(ExitInternal, err)
+		}
+	} else if fixMode(*fix) == fixApply {
+		if _, err := fmt.Fprintf(stdout, "Applied safe fixes to %d file(s).\n", len(fixedFiles)); err != nil {
+			return commandError(ExitInternal, err)
+		}
 	}
 	if reportFails(report, *failOn) {
 		return commandError(ExitFindings, fmt.Errorf("found %d threshold-level diagnostic(s)", reportFailureCount(report, *failOn)))

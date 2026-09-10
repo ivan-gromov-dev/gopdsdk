@@ -126,6 +126,28 @@ when a later acquisition fails.
 `shared`, `simulator`, and `device`. All currently implemented rules below are
 default errors; unresolved dispatch and ownership do not produce an error.
 
+The stable v1 rule reference starts at
+[`docs/analyzer/rules/v1`](docs/analyzer/rules/v1/README.md). Every structured
+diagnostic links to the page for its exact rule version. Text runs can preview
+all analyzer-provided safe edit groups with `--fix preview` or apply them with
+`--fix apply`. Fix-all chooses the first (preferred) group per diagnostic,
+coalesces identical edits, rejects overlaps and unsafe paths, formats Go files,
+and type-checks the complete overlay for every selected target before writing.
+Suppressed and generated-source diagnostics never receive applied edits. A
+second run is expected to produce no copy of an applied fix; rules omit edits
+when intent, evaluation order, ownership, fallback, or error behavior is not
+statically unambiguous. JSON output is read-only and always carries any
+previewable edit groups in `diagnostics[].edits`.
+
+For gradual external-game adoption, start with `--format json --fail-on none`,
+review existing diagnostics into the versioned baseline, then keep new findings
+at the repository's chosen `--fail-on` threshold. Prefer source corrections;
+for a reviewed local exception use
+`//gopdsdk:ignore rule-id -- non-empty reason` at the reported declaration or
+statement. Unknown rules, missing reasons, unsafe baseline paths, and rules that
+are not suppressible are configuration errors. Compatibility floors belong in
+`.gopdsdk-check.json`, so local and CI runs select the same target contract.
+
 | Rule | Proven condition checked |
 | --- | --- |
 | `application-entry` | A package containing `pdxinfo` is `main` or lacks `func New() playdate.Game`. Libraries without `pdxinfo` do not require a factory. |

@@ -45,6 +45,75 @@ func TestRunCheckTextJSONAndFindingExit(t *testing.T) {
 	}
 }
 
+func TestRunCheckPreviewsAppliesAndFormatsSafeFixes(t *testing.T) {
+	root := checkFixture(t, "package game\nfunc bad( ){ }\n")
+	catalog := syntheticProtocolCatalog(t)
+	implementation := &analysis.Analyzer{Name: "protocolsynthetic", Doc: "exercise safe fixes", Run: func(pass *analysis.Pass) (any, error) {
+		function := pass.Files[0].Decls[0].(*ast.FuncDecl)
+		if function.Name.Name == "bad" {
+			pass.Report(analysis.Diagnostic{Pos: function.Name.Pos(), End: function.Name.End(), Message: "rename bad",
+				SuggestedFixes: []analysis.SuggestedFix{{Message: "rename", TextEdits: []analysis.TextEdit{{Pos: function.Name.Pos(), End: function.Name.End(), NewText: []byte("good")}}}}})
+		}
+		return nil, nil
+	}}
+	registry, err := NewRegistry(catalog, Registration{RuleID: "workspace-protocol-synthetic", Analyzer: implementation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := CheckOptions{Catalog: catalog, Registry: registry, AnalyzerVersion: "v1", SDKVersion: "v1.0.0", ModuleRoot: root}
+	var preview bytes.Buffer
+	err = RunCheck(context.Background(), []string{"check", "--target", "device", "--fix", "preview"}, &preview, &bytes.Buffer{}, options)
+	var commandErr *CommandError
+	if !errors.As(err, &commandErr) || commandErr.Code != ExitFindings || !strings.Contains(preview.String(), "+++ b/game.go") || !strings.Contains(preview.String(), "func good()") {
+		t.Fatalf("preview = %v\n%s", err, preview.String())
+	}
+	before, _ := os.ReadFile(filepath.Join(root, "game.go"))
+	if strings.Contains(string(before), "good") {
+		t.Fatal("preview mutated source")
+	}
+
+	var applied bytes.Buffer
+	err = RunCheck(context.Background(), []string{"check", "--target", "device", "--fix", "apply"}, &applied, &bytes.Buffer{}, options)
+	if !errors.As(err, &commandErr) || commandErr.Code != ExitFindings || !strings.Contains(applied.String(), "Applied safe fixes to 1 file(s).") {
+		t.Fatalf("apply = %v\n%s", err, applied.String())
+	}
+	after, _ := os.ReadFile(filepath.Join(root, "game.go"))
+	if string(after) != "package game\n\nfunc good() {}\n" {
+		t.Fatalf("fixed source = %q", after)
+	}
+	var second bytes.Buffer
+	if err := RunCheck(context.Background(), []string{"check", "--target", "device", "--fix", "apply"}, &second, &bytes.Buffer{}, options); err != nil || second.String() != "No findings.\nApplied safe fixes to 0 file(s).\n" {
+		t.Fatalf("idempotent apply = %v, %q", err, second.String())
+	}
+}
+
+func TestPrepareFixesRejectsConflicts(t *testing.T) {
+	root := checkFixture(t, "package game\nfunc bad() {}\n")
+	rangeValue := SourceRange{Path: "game.go", Start: Point{Line: 2, Column: 6}, End: Point{Line: 2, Column: 9}}
+	report := Report{Diagnostics: []Diagnostic{
+		{Rule: "one", Edits: []EditGroup{{Edits: []Edit{{Range: rangeValue, NewText: "good"}}}}},
+		{Rule: "two", Edits: []EditGroup{{Edits: []Edit{{Range: rangeValue, NewText: "best"}}}}},
+	}}
+	if _, err := prepareFixes(root, report); err == nil || !strings.Contains(err.Error(), "conflicting fixes") {
+		t.Fatalf("conflict error = %v", err)
+	}
+}
+
+func TestWriteFixedFilesRejectsChangesAfterAnalysis(t *testing.T) {
+	root := checkFixture(t, "package game\nfunc bad() {}\n")
+	rangeValue := SourceRange{Path: "game.go", Start: Point{Line: 2, Column: 6}, End: Point{Line: 2, Column: 9}}
+	files, err := prepareFixes(root, Report{Diagnostics: []Diagnostic{{Rule: "one", Edits: []EditGroup{{Edits: []Edit{{Range: rangeValue, NewText: "good"}}}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "game.go"), []byte("package game\nfunc newer() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFixedFiles(files); err == nil || !strings.Contains(err.Error(), "changed after analysis") {
+		t.Fatalf("changed-file error = %v", err)
+	}
+}
+
 func TestRunCheckCleanConfigurationLoadAndCancellationExits(t *testing.T) {
 	root := checkFixture(t, "package game\n")
 	catalog := syntheticProtocolCatalog(t)

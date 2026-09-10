@@ -150,6 +150,7 @@ default errors; unresolved dispatch and ownership do not produce an error.
 | `ownership-borrowed-close` | A borrowed handle, such as a bitmap-table frame, is closed by the caller. |
 | `ownership-retained-close` | A menu bitmap is closed before it is cleared or replaced. |
 | `ownership-close-order` | A handle is closed before a locally visible retaining owner detaches or closes it. |
+| `ownership-summary-budget` | Deep profile only: bounded ownership-summary convergence was exhausted, so unresolved interprocedural effects remain invalidated. |
 
 Game method mismatches that already prevent Go type checking remain package-load
 errors. The analyzer follows at most eight local static call edges and 4096
@@ -181,6 +182,17 @@ remove operations. Unknown calls are treated as possible transfers and do not
 become leak findings. Invalid close order includes related source information
 pointing to the retaining operation. The analysis is deliberately silent when
 constructor success, an escape, or cross-function cleanup cannot be proved.
+
+With `--profile deep`, ownership analysis additionally imports and computes
+bounded helper summaries for owned and borrowed results and parameter close or
+transfer effects. It follows direct calls, known method and generic callees,
+small same-package interface target sets only when every target has the same
+effect, and exported helpers in loaded dependencies. The fixed point is limited
+to eight rounds. Unknown targets, reflection, globals, native boundaries, and
+opaque dependencies invalidate the relevant proof. A helper-driven close adds
+the helper call as related information; budget exhaustion emits the
+lower-confidence `ownership-summary-budget` information diagnostic. The
+default profile does not apply these ownership summaries.
 
 ## Error contracts
 

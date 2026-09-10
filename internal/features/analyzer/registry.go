@@ -278,7 +278,11 @@ func (executor *executor) run(analyzer *analysis.Analyzer, loaded *packages.Pack
 		}
 		inputs[required] = dependency.value
 	}
-	if len(analyzer.FactTypes) != 0 {
+	// Ownership facts are consumed only by the explicitly slower deep profile;
+	// keep the default profile from recursively analyzing dependencies merely to
+	// populate a cache it cannot use. Other fact analyzers remain profile-neutral.
+	deepOwnership := analyzer.Name == "sdkownership" && deepAnalysisContext(executor.ctx)
+	if len(analyzer.FactTypes) != 0 && (analyzer.Name != "sdkownership" || deepOwnership) {
 		imports := make([]*packages.Package, 0, len(loaded.Imports))
 		for _, imported := range loaded.Imports {
 			imports = append(imports, imported)

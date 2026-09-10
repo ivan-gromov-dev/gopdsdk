@@ -117,7 +117,7 @@ func documentationFor(rule Rule, diagnosticURL string) string {
 	if len(rule.ContractIDs) == 0 {
 		return ""
 	}
-	return "docs/analyzer/rules/" + string(rule.ID)
+	return "docs/analyzer/rules/v1/" + string(rule.ID) + ".md"
 }
 
 func parseSourceRange(start, end string) (SourceRange, error) {

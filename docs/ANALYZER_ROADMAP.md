@@ -817,6 +817,17 @@ Simulator loading, USB, and physical-device behavior were not run.
 
 Audit the complete diagnostic experience before declaring a stable analyzer.
 
+Complete (2026-09-10): every stable rule now has a generated v1 reference page
+checked against the contract inventory, and structured diagnostics link to that
+exact rule version. The CLI exposes analyzer-provided edits through JSON and
+`--fix preview|apply`; fix-all deterministically selects the preferred group,
+coalesces duplicates, rejects conflicting or unsafe edits, omits suppressed and
+generated findings, formats Go source, and validates an overlay for every
+selected target before writing. Rules continue to emit no edit when semantics,
+evaluation order, ownership, fallback, or error handling are uncertain.
+External adoption guidance covers versioned baselines, inline suppression,
+compatibility floors, and CI thresholds.
+
 Deliverables:
 
 - one rule page per stable diagnostic;
@@ -835,6 +846,12 @@ Verification:
 
 Exit criterion — **stable CLI analyzer**: all default rules are documented,
 tested, suppressible, deterministic, and usable by external CI.
+
+The Windows analyzer unit suite covers preview, application, formatting,
+conflict rejection, target-overlay validation, idempotence, and stable-rule
+documentation freshness on 2026-09-10. This is static analyzer evidence only;
+SDK conversion, Simulator loading, USB, and physical-device behavior were not
+run.
 
 ### Step 13 — Add incremental workspace analysis
 

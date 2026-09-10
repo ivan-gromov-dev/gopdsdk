@@ -7,6 +7,17 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 12 documentation and safe-fix delivery on 2026-09-10.
+  Every stable v1 diagnostic has a generated, inventory-checked rule page with
+  exact version links, contract metadata, safe-fix policy, and suppression
+  guidance. `gopdsdk check --fix preview|apply` now groups preferred fixes,
+  rejects unsafe paths and conflicting edits, excludes suppressed/generated
+  findings, formats Go sources, and validates the complete overlay against all
+  selected targets before writing. Analyzer unit coverage includes preview,
+  apply, formatting, conflict rejection, and idempotence. This is Windows unit
+  and static-analyzer evidence only; no SDK conversion, Simulator, USB, or
+  physical-device behavior was exercised.
+
 - Completed analyzer Step 11 workspace and packaged-resource validation on
   2026-09-10. Default Simulator/device analysis now checks the declared gopdsdk
   release version, required and conflicting `pdxinfo` metadata, safe portable

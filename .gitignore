@@ -37,6 +37,8 @@ docs/*
 !docs/ROADMAP.md
 !docs/ANALYZER_ROADMAP.md
 !docs/assets/
+!docs/analyzer/
+!docs/analyzer/**
 
 # Local build caches
 .cache/

@@ -34,6 +34,8 @@ type handleInfo struct {
 
 type handleState struct {
 	closed   bool
+	closedAt token.Pos
+	closedBy string
 	deferred bool
 	escaped  bool
 	proven   bool
@@ -51,14 +53,19 @@ type ownershipState struct {
 }
 
 func ownershipRuleRegistrations() []Registration {
-	provider := &analysis.Analyzer{Name: "sdkownership", Doc: "track local SDK handle ownership and retention", Requires: []*analysis.Analyzer{buildssa.Analyzer}, ResultType: reflect.TypeOf(ownershipFindings{}), Run: func(pass *analysis.Pass) (any, error) {
+	provider := &analysis.Analyzer{Name: "sdkownership", Doc: "track local and bounded interprocedural SDK handle ownership and retention", Requires: []*analysis.Analyzer{buildssa.Analyzer}, ResultType: reflect.TypeOf(ownershipFindings{}), FactTypes: []analysis.Fact{new(ownershipSummaryFact)}, Run: func(pass *analysis.Pass) (any, error) {
 		findings := make(ownershipFindings)
-		for _, function := range pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA).SrcFuncs {
-			checkOwnershipFunction(function, findings)
+		functions := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA).SrcFuncs
+		summaries, exhausted := buildOwnershipSummaries(pass, functions)
+		if deepAnalysisEnabled(pass) && exhausted && len(functions) != 0 {
+			findings.add("ownership-summary-budget", analysis.Diagnostic{Pos: functions[0].Pos(), Message: "interprocedural ownership summary budget was exhausted; results are lower-confidence and unresolved calls remain invalidated"})
+		}
+		for _, function := range functions {
+			checkOwnershipFunction(pass, function, summaries, findings)
 		}
 		return findings, PassContext(pass).Err()
 	}}
-	ids := []RuleID{"ownership-resource-leak", "ownership-double-close", "ownership-use-after-close", "ownership-bitmap-use-after-close", "ownership-borrowed-close", "ownership-retained-close", "ownership-close-order"}
+	ids := []RuleID{"ownership-resource-leak", "ownership-double-close", "ownership-use-after-close", "ownership-bitmap-use-after-close", "ownership-borrowed-close", "ownership-retained-close", "ownership-close-order", "ownership-summary-budget"}
 	result := make([]Registration, 0, len(ids))
 	for _, id := range ids {
 		result = append(result, Registration{RuleID: id, Analyzer: &analysis.Analyzer{Name: strings.ReplaceAll(string(id), "-", "_"), Doc: "report a proven local ownership violation", Requires: []*analysis.Analyzer{provider}, Run: func(pass *analysis.Pass) (any, error) {
@@ -83,8 +90,8 @@ func (findings ownershipFindings) add(id RuleID, diagnostic analysis.Diagnostic)
 	findings[id] = append(findings[id], diagnostic)
 }
 
-func checkOwnershipFunction(function *ssa.Function, findings ownershipFindings) {
-	infos, values := discoverHandles(function)
+func checkOwnershipFunction(pass *analysis.Pass, function *ssa.Function, summaries ownershipSummaries, findings ownershipFindings) {
+	infos, values := discoverHandles(pass, function, summaries)
 	if len(infos) == 0 || len(function.Blocks) == 0 {
 		return
 	}
@@ -115,7 +122,7 @@ func checkOwnershipFunction(function *ssa.Function, findings ownershipFindings) 
 			}
 			call, ok := instruction.(*ssa.Call)
 			if ok {
-				applyOwnershipCall(call, infos, values, &state, findings)
+				applyOwnershipCall(pass, call, summaries, infos, values, &state, findings)
 				continue
 			}
 			if deferred, ok := instruction.(*ssa.Defer); ok {
@@ -208,7 +215,7 @@ func nilSSAValue(value ssa.Value) bool {
 	return ok && constant.IsNil()
 }
 
-func discoverHandles(function *ssa.Function) (map[int]handleInfo, map[ssa.Value]handleInfo) {
+func discoverHandles(pass *analysis.Pass, function *ssa.Function, summaries ownershipSummaries) (map[int]handleInfo, map[ssa.Value]handleInfo) {
 	infos := make(map[int]handleInfo)
 	values := make(map[ssa.Value]handleInfo)
 	next := 1
@@ -218,7 +225,7 @@ func discoverHandles(function *ssa.Function) (map[int]handleInfo, map[ssa.Value]
 			if !ok || !isHandleType(value.Type()) {
 				continue
 			}
-			kind, parent, known := classifyHandleValue(value, values)
+			kind, parent, known := classifyHandleValue(pass, value, values, summaries)
 			if !known {
 				continue
 			}
@@ -253,7 +260,7 @@ func discoverHandles(function *ssa.Function) (map[int]handleInfo, map[ssa.Value]
 	return infos, values
 }
 
-func classifyHandleValue(value ssa.Value, known map[ssa.Value]handleInfo) (handleKind, ssa.Value, bool) {
+func classifyHandleValue(pass *analysis.Pass, value ssa.Value, known map[ssa.Value]handleInfo, summaries ownershipSummaries) (handleKind, ssa.Value, bool) {
 	extract, ok := value.(*ssa.Extract)
 	if !ok {
 		return 0, nil, false
@@ -262,14 +269,24 @@ func classifyHandleValue(value ssa.Value, known map[ssa.Value]handleInfo) (handl
 	if !ok {
 		return 0, nil, false
 	}
+	if deepAnalysisEnabled(pass) {
+		if summary, ok := ownershipCallSummary(pass, call.Common(), summaries); ok && extract.Index < len(summary.Results) {
+			switch summary.Results[extract.Index] {
+			case ownershipResultOwned:
+				return handleOwned, nil, true
+			case ownershipResultBorrowed:
+				return handleBorrowed, nil, true
+			}
+		}
+	}
 	path, receiver, name, _ := sdkCall(call.Common())
 	if !strings.HasPrefix(path, sdkPackagePrefix) {
 		return 0, nil, false
 	}
 	key := receiver + "." + name
-	borrowed := map[string]bool{"BitmapTable.Frame": true, "TextGraphics.Glyph": true, "AudioSample.Data": true, "AudioChannel.Output": true, "Sequence.Track": true, "SequenceTrack.Instrument": true, "SequenceTrack.ControlSignal": true, "SequenceTrack.SignalForController": true}
+	borrowed := isBorrowedHandleConstructor(key)
 	wrapper := map[string]bool{"AudioChannel.DryLevelSignal": true, "AudioChannel.WetLevelSignal": true, "AudioOutputs.DefaultAudioChannel": true}
-	if borrowed[key] || wrapper[key] {
+	if borrowed || wrapper[key] {
 		var parent ssa.Value
 		if call.Common().IsInvoke() {
 			parent = call.Common().Value
@@ -285,6 +302,10 @@ func classifyHandleValue(value ssa.Value, known map[ssa.Value]handleInfo) (handl
 		return handleOwned, nil, true
 	}
 	return 0, nil, false
+}
+
+func isBorrowedHandleConstructor(key string) bool {
+	return map[string]bool{"BitmapTable.Frame": true, "TextGraphics.Glyph": true, "AudioSample.Data": true, "AudioChannel.Output": true, "Sequence.Track": true, "SequenceTrack.Instrument": true, "SequenceTrack.ControlSignal": true, "SequenceTrack.SignalForController": true}[key]
 }
 
 func ownedConstructor(key string) bool {
@@ -335,7 +356,7 @@ func aliasHandle(value ssa.Value, known map[ssa.Value]handleInfo) (handleInfo, b
 	return result, result.id != 0
 }
 
-func applyOwnershipCall(call *ssa.Call, infos map[int]handleInfo, values map[ssa.Value]handleInfo, state *ownershipState, findings ownershipFindings) {
+func applyOwnershipCall(pass *analysis.Pass, call *ssa.Call, summaries ownershipSummaries, infos map[int]handleInfo, values map[ssa.Value]handleInfo, state *ownershipState, findings ownershipFindings) {
 	common := call.Common()
 	path, receiver, name, _ := sdkCall(common)
 	args := common.Args
@@ -347,6 +368,12 @@ func applyOwnershipCall(call *ssa.Call, infos map[int]handleInfo, values map[ssa
 	}
 	receiverInfo, receiverKnown := values[receiverValue]
 	if !strings.HasPrefix(path, sdkPackagePrefix) {
+		if deepAnalysisEnabled(pass) {
+			if summary, ok := ownershipCallSummary(pass, common, summaries); ok {
+				applyOwnershipSummary(call, summary, values, state)
+				return
+			}
+		}
 		for _, argument := range common.Args {
 			if info, ok := values[argument]; ok {
 				value := state.handles[info.id]
@@ -396,7 +423,11 @@ func applyOwnershipCall(call *ssa.Call, infos map[int]handleInfo, values map[ssa
 			if receiverInfo.typeName == "Bitmap" {
 				id = "ownership-bitmap-use-after-close"
 			}
-			findings.add(id, analysis.Diagnostic{Pos: call.Pos(), Message: fmt.Sprintf("%s.%s uses a handle after Close", receiverInfo.typeName, name)})
+			diagnostic := analysis.Diagnostic{Pos: call.Pos(), Message: fmt.Sprintf("%s.%s uses a handle after Close", receiverInfo.typeName, name)}
+			if current.closedAt.IsValid() {
+				diagnostic.Related = []analysis.RelatedInformation{{Pos: current.closedAt, Message: current.closedBy}}
+			}
+			findings.add(id, diagnostic)
 		}
 	}
 	key := receiver + "." + name

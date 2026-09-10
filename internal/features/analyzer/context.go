@@ -7,6 +7,21 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+type deepAnalysisContextKey struct{}
+
+func withDeepAnalysis(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, deepAnalysisContextKey{}, enabled)
+}
+
+func deepAnalysisEnabled(pass *analysis.Pass) bool {
+	return deepAnalysisContext(PassContext(pass))
+}
+
+func deepAnalysisContext(ctx context.Context) bool {
+	enabled, _ := ctx.Value(deepAnalysisContextKey{}).(bool)
+	return enabled
+}
+
 var analysisPassContexts sync.Map
 
 // PassContext returns the cancellation context for a pass run by Registry.

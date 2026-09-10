@@ -668,6 +668,28 @@ unknown escapes do not become default leak warnings.
 
 ### Step 9 — Add bounded interprocedural ownership summaries
 
+Complete: the `deep` profile computes deterministic ownership summaries for
+owned and borrowed results plus parameter close and transfer effects. Summaries
+propagate through direct calls, statically resolved methods and generic
+instantiations, small same-package interface target sets with identical effects,
+and exported helpers in loaded dependencies through `go/analysis` object facts.
+An eight-round fixed point handles recursion and mutually recursive groups;
+budget exhaustion produces the opt-in `ownership-summary-budget` information
+diagnostic and leaves unresolved effects invalidated. Reflection, globals,
+unknown or mixed interface targets, native boundaries, and opaque external
+calls remain conservative transfer boundaries.
+
+This completes the interprocedural layer together with the existing bounded
+callback/transient-data helper flow and exported capability-guard facts. Deep
+ownership findings include related call-site information for helper-driven
+closes. The default profile continues to consume only intraprocedural ownership
+state, preserving Step 8 latency and precision.
+
+The Windows analyzer and full repository unit suites pass on 2026-09-10.
+Fixtures cover default/deep isolation, local close and constructor helpers, and
+cross-package fact import. This is static analyzer evidence only; no Simulator
+or physical-device runtime behavior is claimed.
+
 Extend ownership, lifetime, capability, and callback facts across helpers
 without claiming complete whole-program proof.
 

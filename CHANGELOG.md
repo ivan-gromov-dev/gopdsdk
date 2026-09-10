@@ -7,6 +7,17 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 9 bounded interprocedural analysis on 2026-09-10.
+  The `deep` profile now propagates owned and borrowed results plus parameter
+  close and transfer effects through direct, known method/generic, small
+  uniform interface, and exported dependency calls. Recursive summaries use an
+  eight-round fixed point, opaque boundaries invalidate proofs, helper closes
+  carry related call information, and budget exhaustion is an explicit likely-
+  confidence information diagnostic. Existing callback escape and capability
+  guard summaries complete the lifetime/capability portion. Default ownership
+  behavior remains intraprocedural. Windows analyzer and full repository unit
+  suites pass; no Simulator or physical-device evidence is claimed.
+
 - Completed analyzer Step 8 intraprocedural ownership and retention analysis on
   2026-09-09. New default ownership rules cover locally proven leaks, double
   close, use after close, borrowed close, retained close, and invalid close

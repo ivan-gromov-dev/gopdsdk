@@ -197,6 +197,7 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 	if err != nil {
 		return commandError(ExitConfiguration, err)
 	}
+	ctx = withDeepAnalysis(ctx, policy.Profile == ProfileDeep)
 
 	var findings []Finding
 	var loadErrors []LoadError

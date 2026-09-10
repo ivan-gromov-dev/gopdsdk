@@ -567,7 +567,7 @@ func (server *lspServer) codeActions(id json.RawMessage, params json.RawMessage)
 				uri := pathFileURI(filepath.Join(workspace.Root, filepath.FromSlash(edit.Range.Path)))
 				changes[uri] = append(changes[uri], map[string]any{"range": lspRange(edit.Range, nil), "newText": edit.NewText})
 			}
-			actions = append(actions, map[string]any{"title": group.Message, "kind": "quickfix", "isPreferred": true, "diagnostics": []map[string]any{{"code": diagnostic.Rule, "source": lspSource}}, "edit": map[string]any{"changes": changes}})
+			actions = append(actions, map[string]any{"title": group.Message, "kind": "quickfix", "isPreferred": true, "diagnostics": []map[string]any{lspDiagnostic(diagnostic, nil, workspace.Root)}, "edit": map[string]any{"changes": changes}})
 		}
 	}
 	server.respond(id, actions, nil)

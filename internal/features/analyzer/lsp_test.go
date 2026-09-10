@@ -73,7 +73,12 @@ func TestLSPPublishPullClearingAndCodeActions(t *testing.T) {
 			sawPull = len(items) == 1
 		}
 		if message["id"] == float64(8) {
-			sawAction = len(message["result"].([]any)) == 1
+			actions := message["result"].([]any)
+			if len(actions) == 1 {
+				diagnostics := actions[0].(map[string]any)["diagnostics"].([]any)
+				item := diagnostics[0].(map[string]any)
+				sawAction = item["range"] != nil && item["message"] == "avoid goroutine" && item["source"] == lspSource
+			}
 		}
 		if message["method"] == "textDocument/publishDiagnostics" {
 			params := message["params"].(map[string]any)

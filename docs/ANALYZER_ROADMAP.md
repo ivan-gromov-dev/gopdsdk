@@ -857,6 +857,16 @@ run.
 
 Prepare the stable engine for interactive use without changing rule semantics.
 
+Complete (2026-09-10): `internal/features/analyzer` now owns an overlay-aware,
+concurrency-safe incremental engine with monotonic workspace versions, stale
+result rejection, cooperative cancellation, deterministic progress stages, and
+explicit fast-edit, save, and deep schedules. Content-addressed snapshot/result
+entries keep parse/type state and all derived SSA, fact, summary, contract,
+manifest, and asset state together; a bounded deterministic LRU prevents state
+from one snapshot crossing an invalidation boundary. Deep analysis remains
+explicit and is never enabled by edit or save requests. Package load errors are
+returned as partial workspace results instead of erasing valid engine state.
+
 Deliverables:
 
 - overlay-aware package snapshots and dependency invalidation;
@@ -879,6 +889,16 @@ Verification:
 
 Exit criterion: incremental and clean batch analysis produce equivalent active
 diagnostics for the same snapshot.
+
+The Windows analyzer unit suite covers overlay edits, renames, syntax-error
+partial results, build-configuration changes, file creation/deletion, exact
+cache hits, bounded eviction, stale versions, cancellation, concurrent
+requests, and clean-batch diagnostic equivalence on 2026-09-10. Instrumentation
+reports cold/incremental duration, live heap, cache hits/misses, invalidation
+size, and cancellation delay. This is unit and static-analyzer evidence only;
+commercial-game latency/memory budgets, SDK conversion, Simulator, USB, and
+physical-device behavior were not exercised. Live deep analysis therefore
+remains disabled by default.
 
 ### Step 14 — Add the language-server facade
 

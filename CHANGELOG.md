@@ -7,6 +7,18 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 13 incremental workspace analysis on 2026-09-10.
+  The analyzer now provides overlay-aware content-addressed snapshots, bounded
+  deterministic cache eviction, dependency-safe derived-state invalidation,
+  fast-edit/save/explicit-deep schedules, monotonic version rejection,
+  cancellation, progress, partial package-load results, and latency, memory,
+  cache, invalidation, and cancellation instrumentation. Windows unit coverage
+  includes edit and configuration sequences, concurrent requests, cancellation,
+  cache eviction, and equivalence with clean batch diagnostics. This is unit and
+  static-analyzer evidence only; commercial-game performance budgets, SDK
+  conversion, Simulator, USB, and hardware were not exercised, so live deep
+  analysis remains disabled by default.
+
 - Completed analyzer Step 12 documentation and safe-fix delivery on 2026-09-10.
   Every stable v1 diagnostic has a generated, inventory-checked rule page with
   exact version links, contract metadata, safe-fix policy, and suppression

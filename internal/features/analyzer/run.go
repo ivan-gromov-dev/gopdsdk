@@ -223,6 +223,11 @@ func RunCheck(ctx context.Context, args []string, stdout, stderr io.Writer, opti
 		if activeRuleSet(options.Catalog, selection, selectedTarget)["capability-video-availability"] {
 			result.Findings = append(result.Findings, capabilityAvailabilityFindings(snapshot, *gopdsdkFloor, *playdateSDK)...)
 		}
+		workspace, err := workspaceFindings(ctx, snapshot, activeRuleSet(options.Catalog, selection, selectedTarget))
+		if err != nil {
+			return classifyCheckError(err, ExitInternal)
+		}
+		result.Findings = append(result.Findings, workspace...)
 		filtered, err := filterSourceFindings(snapshot, result.Findings, GeneratedPolicy(*generated), changedSet)
 		if err != nil {
 			return commandError(ExitInternal, err)

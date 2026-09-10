@@ -7,6 +7,15 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 11 workspace and packaged-resource validation on
+  2026-09-10. Default Simulator/device analysis now checks the declared gopdsdk
+  release version, required and conflicting `pdxinfo` metadata, safe portable
+  resource paths, symbolic links and case-fold collisions, launcher-image
+  completeness, and statically named bitmap/table/font/audio/MIDI/video loads.
+  The checks are read-only and deliberately leave conversion and runtime loading
+  to SDK integration. Windows analyzer unit coverage passes; no Simulator,
+  SDK-conversion, or physical-device evidence is claimed.
+
 - Completed analyzer Step 10 opt-in frame-loop, audio, and memory-risk analysis
   on 2026-09-10. Experimental and deep profiles now map exact game update,
   registered sprite/completion, and audio render roots through direct local

@@ -769,8 +769,11 @@ measurement before they affect release readiness.
 
 ### Step 11 — Add workspace, manifest, asset, and migration checks
 
-Extend the feature beyond Go AST where deterministic workspace metadata can be
-validated statically.
+Complete on 2026-09-10. The default Simulator/device profile now extends beyond
+Go AST with read-only `go.mod`, `pdxinfo`, resource-tree, launcher-image, and
+literal SDK loader-path checks. Existing loader/configuration, application-entry,
+source-role, build-constraint, and version-floor checks supply the package,
+target, source-set, and SDK-intent portions of this step.
 
 Rule scope:
 
@@ -787,6 +790,12 @@ Rule scope:
 - deprecated, renamed, or stale gopdsdk API use with mechanically safe
   migrations.
 
+The current v1 API has no deprecated or renamed symbol inventory, so this step
+adds no speculative migration. Binary asset conversion and runtime loading stay
+outside the analyzer. Static inspection proves safe names, presence, unique
+case-folded identity, supported loader association, and launcher-set structure;
+it does not claim that `pdc` accepts arbitrary file contents.
+
 Verification:
 
 - Windows, macOS, and Linux path and case fixtures;
@@ -797,6 +806,12 @@ Verification:
 
 Exit criterion — **stable analyzer candidate**: source, workspace, and asset
 rules cover the documented static contract with CI-ready defaults.
+
+The Windows analyzer unit suite covers valid workspaces, malformed and duplicate
+manifest fields, unsafe Windows/POSIX paths, version placeholders, literal
+missing paths, extensionless lookup, and cross-platform case mismatch on
+2026-09-10. This is deterministic static-analyzer evidence only; SDK conversion,
+Simulator loading, USB, and physical-device behavior were not run.
 
 ### Step 12 — Complete documentation and safe fixes
 

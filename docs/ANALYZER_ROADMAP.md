@@ -905,6 +905,15 @@ remains disabled by default.
 Expose incremental analysis to editor clients while leaving `gopls` responsible
 for general Go language features.
 
+Complete (2026-09-10): `gopdsdk lsp` now owns a dependency-free LSP 3.17 stdio
+facade over the incremental analyzer. It supports initialize/configuration
+negotiation, dynamic multi-root selection, full-document overlays, edit/save
+schedules, push and pull diagnostics, related locations, safe quick fixes,
+versioned rule help, progress and diagnostic refresh notifications, stale-edit
+cancellation, and deterministic clearing. Its advertised capabilities exclude
+completion, navigation, formatting, and other general Go services owned by
+`gopls`. Structured logs retain event names and error types only.
+
 Deliverables:
 
 - initialize and workspace configuration negotiation;
@@ -926,6 +935,13 @@ Verification:
 
 Exit criterion — **editor API**: any LSP-capable client can consume analyzer
 diagnostics and safe actions without IDE-specific rule logic.
+
+The Windows protocol unit suite covers JSON-RPC framing, initialize/shutdown,
+malformed headers, push/pull conversion, diagnostic clearing, safe actions,
+UTF-16 positions, and nested workspace selection on 2026-09-10. The full
+repository unit suite and `go vet ./...` pass. This is protocol and static
+analyzer evidence only; VS Code, GoLand, SDK conversion, Simulator, USB, and
+physical-device behavior were not exercised.
 
 ### Step 15 — Validate VS Code and GoLand consumers
 

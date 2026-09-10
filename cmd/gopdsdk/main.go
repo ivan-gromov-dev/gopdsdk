@@ -46,6 +46,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			} else {
 				err = analyzer.RunCheck(ctx, args, stdout, stderr, options)
 			}
+		case "lsp":
+			options, optionsErr := analyzer.DefaultCheckOptions()
+			if optionsErr != nil {
+				err = &analyzer.CommandError{Code: analyzer.ExitInternal, Err: optionsErr}
+			} else {
+				err = analyzer.RunLSP(ctx, args, os.Stdin, stdout, stderr, options)
+			}
 		case "doctor":
 			err = doctor.Run(ctx, args, stdout, stderr, doctor.Options{
 				SimulatorProbe: func(ctx context.Context, sdkPath string) error {

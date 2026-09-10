@@ -7,6 +7,16 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed analyzer Step 14 language-server facade on 2026-09-10.
+  `gopdsdk lsp` now provides incremental push/pull diagnostics, related
+  locations, safe-fix code actions, rule help, progress, refresh,
+  configuration and target negotiation, stale-edit cancellation, and
+  deterministic multi-root selection while advertising no general Go language
+  features owned by `gopls`. Protocol tests cover framing, initialization,
+  malformed input, diagnostics, clearing, fixes, and nested workspace roots.
+  This is protocol and static-analyzer unit evidence only; no VS Code or GoLand
+  UI validation was performed.
+
 - Completed analyzer Step 13 incremental workspace analysis on 2026-09-10.
   The analyzer now provides overlay-aware content-addressed snapshots, bounded
   deterministic cache eviction, dependency-safe derived-state invalidation,

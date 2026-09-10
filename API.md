@@ -139,6 +139,18 @@ when intent, evaluation order, ownership, fallback, or error behavior is not
 statically unambiguous. JSON output is read-only and always carries any
 previewable edit groups in `diagnostics[].edits`.
 
+`gopdsdk lsp` exposes the same analyzer through an LSP 3.17-compatible stdio
+server intended to run beside `gopls`. It negotiates incremental full-document
+sync, push and pull diagnostics, related locations, preferred safe-fix code
+actions, diagnostic refresh, progress, cancellation, and dynamic multi-root
+workspaces. Initialization options and `workspace/didChangeConfiguration`
+accept `target` (`shared`, `simulator`, `device`, or `both`), `rules`,
+`categories`, `excludeRules`, and the explicit `deep` boolean. Deep analysis is
+never enabled by an edit or save alone. The custom `gopdsdk/ruleHelp` request
+accepts `{ "rule": "rule-id" }` and returns versioned catalog metadata and its
+documentation path. Logs contain event names and error types only; source,
+request payloads, file paths, and environment values are not logged.
+
 For gradual external-game adoption, start with `--format json --fail-on none`,
 review existing diagnostics into the versioned baseline, then keep new findings
 at the repository's chosen `--fail-on` threshold. Prefer source corrections;

@@ -1,7 +1,8 @@
 # Static analyzer roadmap
 
-Status: Steps 0–7 complete. Step 3 native three-platform CI remains pending.
-Updated 2026-09-09.
+Status: Steps 0–14 complete and prepared in `v1.1.0`; Steps 15–16 remain
+active. Native three-platform CI for the release commit remains pending.
+Updated 2026-09-11.
 
 This document is the canonical implementation plan for the gopdsdk static
 analyzer. The product boundary remains in [ROADMAP.md](ROADMAP.md), the public

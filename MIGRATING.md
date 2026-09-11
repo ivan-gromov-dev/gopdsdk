@@ -1,4 +1,19 @@
-# Migrating to v1.0.0
+# Migration guides
+
+## Migrating to v1.1.0
+
+`v1.1.0` is a compatible CLI expansion. It adds `gopdsdk check` for batch and
+CI analysis and `gopdsdk lsp` for editor clients; it does not remove, rename,
+or intentionally change the behavior of the stable `v1.0.x` native API.
+Existing games can update their module requirement without source changes.
+
+The default analyzer profile reports only high-confidence contract findings.
+Experimental and deep ownership, interprocedural, and performance analysis
+remain opt-in. Teams adopting the analyzer can use its versioned configuration,
+inline suppressions, or baseline support to stage enforcement without changing
+runtime behavior.
+
+## Migrating to v1.0.0
 
 `v1.0.0` freezes the public offline-game contract accumulated through
 `v0.11.0` and adds bounded cooperative scheduling, the conservative-device

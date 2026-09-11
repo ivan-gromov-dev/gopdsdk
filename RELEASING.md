@@ -1,6 +1,6 @@
 # Release procedure
 
-The latest stable release is `v1.0.0`. Go module versions come from Git
+The latest prepared release is `v1.1.0`. Go module versions come from Git
 tags; no separate VERSION file is maintained. The procedure below applies to
 the next planned release selected from the roadmap.
 

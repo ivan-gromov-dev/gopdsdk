@@ -7,6 +7,28 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+## v1.1.0 (2026-09-11)
+
+- Added the compatible `gopdsdk check` static-analysis CLI and `gopdsdk lsp`
+  editor API without removing, deprecating, or intentionally changing the
+  stable `v1.0.x` native API. Stable diagnostics cover device portability,
+  application and lifecycle shape, optional capabilities, borrowed callback
+  data, errors and significant results, local ownership, workspace metadata,
+  manifests, and packaged resources. Experimental and deep profiles add
+  bounded interprocedural ownership and structural performance findings.
+- Added deterministic text and JSON diagnostics, target and rule selection,
+  repository configuration, inline suppressions, adoption baselines, related
+  locations, versioned rule documentation, and previewable or applicable safe
+  fixes. Incremental snapshots and the LSP 3.17 facade provide cancellation,
+  progress, push/pull diagnostics, code actions, rule help, and multi-root
+  workspace selection while leaving general Go language features to `gopls`.
+- Release preparation passed formatting, `go test ./...`, `go vet ./...`,
+  `git diff --check`, and `gopdsdk doctor` on Windows with Go 1.26.5 and the
+  installed Playdate SDK 3.1.1. The analyzer has Windows unit and
+  external-consumer CLI evidence. Native CI for the release commit, VS Code
+  and GoLand UI validation, Simulator execution, USB deployment, and physical
+  Playdate behavior remain unverified for this release.
+
 - LSP target selection now always includes shared SDK-contract analysis and
   exposes only `simulator`, `device`, and `both` as configurable platform
   targets. The batch `gopdsdk check --target shared` surface remains available
@@ -172,8 +194,6 @@ requires an explicitly documented exception.
   device constraints. Channel diagnostics now cover generic type arguments,
   including inferred and imported named channel types. These are bounded
   checks, not blanket prohibitions on defer, generics, or compiler directives.
-- Changed the canonical module, import, documentation, release, and repository
-  paths to `github.com/ivan-gromov-dev/gopdsdk` after the GitHub account rename.
 - Began the first production static-analyzer device rule pack. `gopdsdk check`
   now reports the initial stable syntax, import, and typed-symbol violations for
   goroutines, channels, `select`, clock and scheduling APIs, `fmt`,

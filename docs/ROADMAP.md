@@ -1,7 +1,7 @@
 # Product roadmap
 
-Status: `v1.0.0` is released with the stable offline contract, updated
-2026-08-31.
+Status: `v1.1.0` is prepared with the static-analyzer CLI and editor API,
+updated 2026-09-11.
 
 This is the canonical post-1.0 planning document. Released capability and
 evidence live in [COMPATIBILITY.md](../COMPATIBILITY.md) and
@@ -50,14 +50,19 @@ callbacks, lifecycle paths, performance budgets, packaging, and release
 operations. Findings become normal `v1.x` compatibility fixes or evidence;
 they do not retroactively gate `v1.0.0`.
 
-## Post-1.0 static analyzer and IDE diagnostics
+## Released v1.1 analyzer and remaining IDE validation
 
-Build the broadest practical version-matched analyzer for the documented
-gopdsdk application and device contracts. It should cover device portability,
-application shape, lifecycle, optional capabilities, callback-scoped data,
-resource ownership, retention graphs, error handling, bounds, hot-path risk,
-workspace metadata, manifests, assets, structured CI output, safe fixes, and
-live VS Code and GoLand diagnostics without duplicating general Go tooling.
+`v1.1.0` adds the version-matched `gopdsdk check` static analyzer and the
+`gopdsdk lsp` editor API. The released engine covers device portability,
+application shape and lifecycle, optional capabilities, callback-scoped data,
+resource ownership and retention, error and value contracts, opt-in hot-path
+risk, workspace metadata and assets, structured output, suppressions,
+baselines, safe fixes, incremental analysis, and LSP diagnostics. These are
+compatible CLI additions; the stable native `playdate` API is unchanged.
+
+Thin VS Code and GoLand integrations and external-game precision hardening
+remain active post-1.1 work. Until those checks pass, the release makes no IDE
+UI or default-ready-on-commercial-games claim.
 
 The ordered implementation plan, rule catalog, milestones, verification gates,
 and static-analysis limits live in
@@ -66,9 +71,9 @@ source for analyzer scope; keep this product roadmap at the capability level.
 Integrated build, run, log, and debugger adapters remain a subsequent IDE
 tooling scope rather than analyzer evidence.
 
-## `v1.1.0` — networking and multiplayer feasibility
+## Future — networking and multiplayer feasibility
 
-Networking was deliberately not a `v1.0.0` gate. The official Playdate 3.1.1 C
+Networking was deliberately not a `v1.0.0` or `v1.1.0` gate. The official Playdate 3.1.1 C
 API exposes permission-gated HTTP and outbound TCP connections, so online
 multiplayer is technically possible, but it adds server operations, protocol
 design, latency, reconnection, security, privacy, and long-lived compatibility

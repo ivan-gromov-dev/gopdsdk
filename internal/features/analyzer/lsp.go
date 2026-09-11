@@ -407,7 +407,7 @@ func (server *lspServer) analyze(workspaceURI string, save bool) {
 	targetName, deep := workspace.Target, workspace.Deep
 	server.mu.Unlock()
 	defer cancel()
-	targets, err := checkTargets(targetName)
+	targets, err := lspTargets(targetName)
 	if err != nil {
 		server.log("configuration", err)
 		return
@@ -437,6 +437,19 @@ func (server *lspServer) analyze(workspaceURI string, save bool) {
 		return
 	}
 	server.publish(workspaceURI, version, report.Diagnostics, overlay)
+}
+
+func lspTargets(value string) ([]Target, error) {
+	switch value {
+	case "simulator":
+		return []Target{TargetShared, TargetSimulator}, nil
+	case "device":
+		return []Target{TargetShared, TargetDevice}, nil
+	case "both":
+		return []Target{TargetShared, TargetSimulator, TargetDevice}, nil
+	default:
+		return nil, fmt.Errorf("invalid LSP target %q", value)
+	}
 }
 
 func (server *lspServer) publish(workspaceURI string, version uint64, diagnostics []Diagnostic, overlay map[string][]byte) {
@@ -567,7 +580,7 @@ func (server *lspServer) codeActions(id json.RawMessage, params json.RawMessage)
 				uri := pathFileURI(filepath.Join(workspace.Root, filepath.FromSlash(edit.Range.Path)))
 				changes[uri] = append(changes[uri], map[string]any{"range": lspRange(edit.Range, nil), "newText": edit.NewText})
 			}
-			actions = append(actions, map[string]any{"title": group.Message, "kind": "quickfix", "isPreferred": true, "diagnostics": []map[string]any{{"code": diagnostic.Rule, "source": lspSource}}, "edit": map[string]any{"changes": changes}})
+			actions = append(actions, map[string]any{"title": group.Message, "kind": "quickfix", "isPreferred": true, "diagnostics": []map[string]any{lspDiagnostic(diagnostic, nil, workspace.Root)}, "edit": map[string]any{"changes": changes}})
 		}
 	}
 	server.respond(id, actions, nil)

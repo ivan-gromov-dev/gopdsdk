@@ -144,9 +144,11 @@ server intended to run beside `gopls`. It negotiates incremental full-document
 sync, push and pull diagnostics, related locations, preferred safe-fix code
 actions, diagnostic refresh, progress, cancellation, and dynamic multi-root
 workspaces. Initialization options and `workspace/didChangeConfiguration`
-accept `target` (`shared`, `simulator`, `device`, or `both`), `rules`,
+accept `target` (`simulator`, `device`, or `both`), `rules`,
 `categories`, `excludeRules`, and the explicit `deep` boolean. Deep analysis is
-never enabled by an edit or save alone. The custom `gopdsdk/ruleHelp` request
+never enabled by an edit or save alone. Every LSP target includes the shared
+SDK-contract analysis before its selected platform analysis. The custom
+`gopdsdk/ruleHelp` request
 accepts `{ "rule": "rule-id" }` and returns versioned catalog metadata and its
 documentation path. Logs contain event names and error types only; source,
 request payloads, file paths, and environment values are not logged.

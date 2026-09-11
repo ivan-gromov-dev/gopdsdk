@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -73,7 +74,12 @@ func TestLSPPublishPullClearingAndCodeActions(t *testing.T) {
 			sawPull = len(items) == 1
 		}
 		if message["id"] == float64(8) {
-			sawAction = len(message["result"].([]any)) == 1
+			actions := message["result"].([]any)
+			if len(actions) == 1 {
+				diagnostics := actions[0].(map[string]any)["diagnostics"].([]any)
+				item := diagnostics[0].(map[string]any)
+				sawAction = item["range"] != nil && item["message"] == "avoid goroutine" && item["source"] == lspSource
+			}
 		}
 		if message["method"] == "textDocument/publishDiagnostics" {
 			params := message["params"].(map[string]any)
@@ -116,6 +122,26 @@ func TestLSPMultiRootSelectionAndMalformedInput(t *testing.T) {
 	server.changeDocument("textDocument/didChange", mustJSON(t, map[string]any{"textDocument": map[string]any{"uri": documentURI, "version": 3}, "contentChanges": []map[string]any{{"text": "stale"}}}))
 	if got := string(server.docs[documentURI].Text); got != "new" {
 		t.Fatalf("stale edit replaced document with %q", got)
+	}
+}
+
+func TestLSPTargetsAlwaysIncludeSharedAnalysis(t *testing.T) {
+	tests := []struct {
+		name string
+		want []Target
+	}{
+		{name: "simulator", want: []Target{TargetShared, TargetSimulator}},
+		{name: "device", want: []Target{TargetShared, TargetDevice}},
+		{name: "both", want: []Target{TargetShared, TargetSimulator, TargetDevice}},
+	}
+	for _, test := range tests {
+		got, err := lspTargets(test.name)
+		if err != nil || !slices.Equal(got, test.want) {
+			t.Errorf("lspTargets(%q) = %v, %v; want %v, nil", test.name, got, err, test.want)
+		}
+	}
+	if _, err := lspTargets("shared"); err == nil {
+		t.Fatal("shared accepted as a configurable LSP target")
 	}
 }
 

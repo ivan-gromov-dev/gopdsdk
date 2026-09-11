@@ -7,6 +7,12 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- LSP target selection now always includes shared SDK-contract analysis and
+  exposes only `simulator`, `device`, and `both` as configurable platform
+  targets. The batch `gopdsdk check --target shared` surface remains available
+  for focused CLI and CI runs. Windows unit coverage verifies the LSP target
+  expansion; no Simulator or physical-device behavior was exercised.
+
 - Completed analyzer Step 14 language-server facade on 2026-09-10.
   `gopdsdk lsp` now provides incremental push/pull diagnostics, related
   locations, safe-fix code actions, rule help, progress, refresh,

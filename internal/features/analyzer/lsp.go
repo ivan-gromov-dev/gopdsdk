@@ -407,7 +407,7 @@ func (server *lspServer) analyze(workspaceURI string, save bool) {
 	targetName, deep := workspace.Target, workspace.Deep
 	server.mu.Unlock()
 	defer cancel()
-	targets, err := checkTargets(targetName)
+	targets, err := lspTargets(targetName)
 	if err != nil {
 		server.log("configuration", err)
 		return
@@ -437,6 +437,19 @@ func (server *lspServer) analyze(workspaceURI string, save bool) {
 		return
 	}
 	server.publish(workspaceURI, version, report.Diagnostics, overlay)
+}
+
+func lspTargets(value string) ([]Target, error) {
+	switch value {
+	case "simulator":
+		return []Target{TargetShared, TargetSimulator}, nil
+	case "device":
+		return []Target{TargetShared, TargetDevice}, nil
+	case "both":
+		return []Target{TargetShared, TargetSimulator, TargetDevice}, nil
+	default:
+		return nil, fmt.Errorf("invalid LSP target %q", value)
+	}
 }
 
 func (server *lspServer) publish(workspaceURI string, version uint64, diagnostics []Diagnostic, overlay map[string][]byte) {

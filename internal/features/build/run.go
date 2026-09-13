@@ -6,10 +6,22 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 )
+
+// ResultSchema identifies a successful structured Simulator build.
+const ResultSchema = "gopdsdk-build/v1"
+
+type StructuredResult struct {
+	Schema   string `json:"schema"`
+	Target   string `json:"target"`
+	Package  string `json:"package"`
+	Artifact string `json:"artifact"`
+}
 
 // Run executes the build command.
 func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
@@ -67,4 +79,22 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	_, err = fmt.Fprintf(stdout, "Built %s\nOutput: %s\n", result.PackageImport, result.Output)
 	return err
+}
+
+func writeStructuredResult(out io.Writer, result Result) error {
+	artifact := filepath.ToSlash(strings.ReplaceAll(result.Output, `\`, "/"))
+	return toolingprotocol.WriteResult(out, "build", StructuredResult{Schema: ResultSchema, Target: "simulator", Package: result.PackageImport, Artifact: artifact})
+}
+
+func writeStructuredFailure(out io.Writer, ctx context.Context, err error) error {
+	category, action := "build-failed", "inspect-build-configuration"
+	if ctx.Err() != nil {
+		category, action = "cancelled", "retry"
+	} else if strings.Contains(err.Error(), "output already exists") {
+		category, action = "output-conflict", "select-output-or-force"
+	}
+	if writeErr := toolingprotocol.WriteFailure(out, "build", category, &toolingprotocol.Remediation{Action: action}); writeErr != nil {
+		return writeErr
+	}
+	return &toolingprotocol.SilentError{Err: err}
 }

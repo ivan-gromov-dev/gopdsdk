@@ -1,0 +1,47 @@
+package deviceprobe
+
+import (
+	"bytes"
+	"encoding/json"
+	"strings"
+	"testing"
+
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
+)
+
+func TestStructuredDeviceBuildResult(t *testing.T) {
+	var output bytes.Buffer
+	result := Result{Package: "example.com/game", Output: `C:\work\game.pdx`, Metrics: Metrics{StaticRAM: 1024, ELF: 2048, PDX: 4096}}
+	if err := writeStructuredBuildResult(&output, result); err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := toolingprotocol.DecodeEnvelope(output.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var structured structuredBuildResult
+	if err := json.Unmarshal(envelope.Result, &structured); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Command != "build device" || structured.Schema != buildResultSchema || structured.Target != "device" || structured.Artifact != "C:/work/game.pdx" || structured.Metrics.PDXBytes != 4096 {
+		t.Fatalf("structured result = %+v, envelope = %+v", structured, envelope)
+	}
+}
+
+func TestStructuredDeviceBuildFailureAndPlanningProgress(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	err := Run(t.Context(), []string{"build", "device", "--format", "json", "--progress", "--sdk", t.TempDir(), "."}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("Run succeeded")
+	}
+	envelope, decodeErr := toolingprotocol.DecodeEnvelope(stdout.Bytes())
+	if decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if envelope.OK || envelope.Failure == nil || envelope.Failure.Category != "build-failed" {
+		t.Fatalf("failure envelope = %+v", envelope)
+	}
+	if !strings.Contains(stderr.String(), `"command":"build device"`) || !strings.Contains(stderr.String(), `"stage":"planning"`) {
+		t.Fatalf("progress = %q", stderr.String())
+	}
+}

@@ -30,6 +30,7 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	dryRun := flags.Bool("dry-run", false, "print the build plan without executing tools")
 	memory := flags.String("memory", string(buildplan.DeviceMemoryConservative), "device memory strategy: conservative (default) or none (legacy diagnostic)")
 	format := flags.String("format", "text", "output format for probe device: text or json")
+	structuredProgress := flags.Bool("progress", false, "write structured build progress events to stderr")
 	if err := flags.Parse(args[2:]); err != nil {
 		return err
 	}
@@ -39,8 +40,11 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if *format != "text" && *format != "json" {
 		return fmt.Errorf("unsupported device probe format %q", *format)
 	}
-	if *format == "json" && args[0] != "probe" {
-		return fmt.Errorf("--format json is currently supported only by \"gopdsdk probe device\"")
+	if *format == "json" && args[0] == "run" {
+		return fmt.Errorf("--format json is not yet supported by \"gopdsdk run device\"")
+	}
+	if *structuredProgress && (*format != "json" || !buildDevice) {
+		return fmt.Errorf("--progress requires \"gopdsdk build device --format json\"")
 	}
 	application := "./examples/hello"
 	if buildDevice || runDevice {
@@ -66,9 +70,20 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 			*sdkPath = filepath.Join(home, "Documents", "PlaydateSDK")
 		}
 	}
-	result, err := Probe(ctx, Config{SDKPath: *sdkPath, Application: application, Output: *output, Replace: *force || runDevice, Persist: buildDevice, Install: *install || runDevice, Run: runDevice, ArtifactsDir: *artifactsDir, Memory: memoryStrategy})
+	sequence := 0
+	var progress func(string)
+	if *structuredProgress {
+		progress = func(stage string) {
+			sequence++
+			_ = toolingprotocol.WriteProgress(stderr, toolingprotocol.ProgressEvent{Schema: toolingprotocol.ProgressSchema, Command: "build device", Sequence: sequence, Stage: stage})
+		}
+	}
+	result, err := Probe(ctx, Config{SDKPath: *sdkPath, Application: application, Output: *output, Replace: *force || runDevice, Persist: buildDevice, Install: *install || runDevice, Run: runDevice, ArtifactsDir: *artifactsDir, Memory: memoryStrategy, Progress: progress})
 	if err != nil {
 		if *format == "json" {
+			if buildDevice {
+				return writeStructuredBuildFailure(stdout, ctx, err)
+			}
 			category := "probe-failed"
 			if ctx.Err() != nil {
 				category = "cancelled"
@@ -81,6 +96,9 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if *format == "json" {
+		if buildDevice {
+			return writeStructuredBuildResult(stdout, result)
+		}
 		values := []toolingprotocol.ProbeValue{
 			{Name: "compiler", Value: result.GCC}, {Name: "deployment", Value: result.Deploy}, {Name: "elfBytes", Value: result.Metrics.ELF},
 			{Name: "execution", Value: result.Run}, {Name: "export", Value: result.Export}, {Name: "format", Value: result.Format},

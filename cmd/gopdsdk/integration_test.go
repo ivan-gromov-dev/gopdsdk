@@ -78,6 +78,17 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 	if strings.Contains(string(buildOutput), "secret build sdk") {
 		t.Fatalf("structured build failure leaked input path: %s", buildOutput)
 	}
+	command = exec.Command(binary, "build", "device", "--format", "json", "--progress", "--sdk", filepath.Join(project, "secret device build sdk"), ".")
+	command.Dir = project
+	command.Env = append(os.Environ(), "GOWORK=off")
+	deviceBuildOutput, deviceBuildErr := command.CombinedOutput()
+	var deviceBuildExitError *exec.ExitError
+	if !errors.As(deviceBuildErr, &deviceBuildExitError) || deviceBuildExitError.ExitCode() != 2 || !strings.Contains(string(deviceBuildOutput), `"command":"build device"`) || !strings.Contains(string(deviceBuildOutput), `"command": "build device"`) {
+		t.Fatalf("structured device build failure: error = %v, output = %s", deviceBuildErr, deviceBuildOutput)
+	}
+	if strings.Contains(string(deviceBuildOutput), "secret device build sdk") {
+		t.Fatalf("structured device build failure leaked input path: %s", deviceBuildOutput)
+	}
 	command = exec.Command(binary, "run", "--format", "json", "--progress", "--sdk", filepath.Join(project, "secret run sdk"), ".")
 	command.Dir = project
 	command.Env = append(os.Environ(), "GOWORK=off")

@@ -77,7 +77,7 @@ structured remediation, returns exit code 2, and does not repeat the raw error
 on stderr. Current categories are `cancelled`, `not-connected`, and
 `probe-failed`. Argument and flag errors occur before probe execution and retain
 the normal human-readable stderr contract. `--format json` is not yet supported
-by `build device` or `run device`.
+by `run device`.
 
 `gopdsdk build --format json` returns a successful Simulator build as
 `gopdsdk-build/v1`, including target identity, application import path, and a
@@ -103,6 +103,15 @@ A cancellation observed after building prevents launch. Structured failures use
 `build-failed`, `launch-failed`, or `cancelled`, keep exit code 2, and omit raw
 build and launch errors. A successful command intentionally leaves the launched
 Simulator running; the PID identifies that independently owned process.
+
+`gopdsdk build device --format json` uses `gopdsdk-build/v1` with target
+`device`. In addition to package and normalized artifact path, the required
+`metrics` record contains `staticRAMBytes`, `elfBytes`, and `pdxBytes` measured
+from the linked and packaged artifact. It does not imply deployment, USB, or
+physical execution. Optional `--progress` emits command `build device` with
+the same planning, compilation, packaging, and cleanup stages. Failures use
+`build-failed`, `output-conflict`, or `cancelled`, retain exit code 2, and do
+not expose raw compiler or linker output.
 
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official

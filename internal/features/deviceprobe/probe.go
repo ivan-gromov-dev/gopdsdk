@@ -54,10 +54,12 @@ type Config struct {
 	Run          bool
 	ArtifactsDir string
 	Memory       buildplan.DeviceMemoryStrategy
+	Progress     func(string)
 }
 
 // Probe compiles and links a structural Playdate device ELF.
 func Probe(ctx context.Context, config Config) (Result, error) {
+	deviceProgress(config, "planning")
 	if config.SDKPath == "" {
 		return Result{}, fmt.Errorf("Playdate SDK path is required")
 	}
@@ -144,6 +146,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		return Result{}, err
 	}
 	defer cleanupArtifacts(cleanupPaths)
+	defer deviceProgress(config, "cleanup")
 	for _, file := range []struct {
 		name     string
 		contents string
@@ -157,6 +160,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("write %s: %w", file.name, err)
 		}
 	}
+	deviceProgress(config, "compilation")
 	for index, planned := range plan.Commands[:7] {
 		if _, err := runPlannedCommand(ctx, planned); err != nil {
 			return Result{}, err
@@ -242,6 +246,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("inspect conservative GC heap: %w", err)
 		}
 	}
+	deviceProgress(config, "packaging")
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create device package source: %w", err)
@@ -350,6 +355,12 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		Pending: pending,
 		Metrics: metrics,
 	}, nil
+}
+
+func deviceProgress(config Config, stage string) {
+	if config.Progress != nil {
+		config.Progress(stage)
+	}
 }
 
 func measureDeviceArtifact(elfPath, pdxPath string) (Metrics, error) {

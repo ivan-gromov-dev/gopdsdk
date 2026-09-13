@@ -47,6 +47,13 @@ requires an explicitly documented exception.
   structured orchestration with injected build/launch boundaries and redacted
   launch failures; external-consumer CLI coverage exercises the build-failure
   path. No real Simulator was launched.
+- Added `gopdsdk build device --format json` using the shared
+  `gopdsdk-build/v1` result with device target identity, normalized artifact
+  path, and static-RAM, ELF, and PDX byte metrics. Optional progress covers the
+  real planning, compilation, packaging, and cleanup boundaries. Unit and
+  external-consumer CLI tests exercise deterministic success projection and a
+  redacted failure fixture. No device build, USB operation, or hardware
+  execution was performed.
 
 ## v1.1.0 (2026-09-11)
 

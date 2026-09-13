@@ -95,6 +95,15 @@ reject unknown event schemas. Cancellation propagates through the build
 context to owned child processes, after which reached cleanup runs before the
 final failure is returned.
 
+`gopdsdk run --format json` builds with deterministic replacement semantics,
+launches Playdate Simulator, and returns `gopdsdk-run/v1` with target, package,
+normalized artifact path, and Simulator process ID. Its optional `--progress`
+stream forwards the reached build stages under command `run` and adds `launch`.
+A cancellation observed after building prevents launch. Structured failures use
+`build-failed`, `launch-failed`, or `cancelled`, keep exit code 2, and omit raw
+build and launch errors. A successful command intentionally leaves the launched
+Simulator running; the PID identifies that independently owned process.
+
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or

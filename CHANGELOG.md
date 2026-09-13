@@ -40,6 +40,13 @@ requires an explicitly documented exception.
   exit status. Unit and external-consumer failure-fixture tests cover schema
   negotiation, stream separation, deterministic events, path normalization,
   and redaction. No successful SDK build or Simulator launch was exercised.
+- Added `gopdsdk run --format json` with the `gopdsdk-run/v1` result and
+  optional `gopdsdk-progress/v1` build/launch events. Cancellation after build
+  now prevents Simulator launch, while successful launches retain the existing
+  detached-process behavior and expose their PID. Unit tests cover successful
+  structured orchestration with injected build/launch boundaries and redacted
+  launch failures; external-consumer CLI coverage exercises the build-failure
+  path. No real Simulator was launched.
 
 ## v1.1.0 (2026-09-11)
 

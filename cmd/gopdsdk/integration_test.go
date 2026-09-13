@@ -78,6 +78,17 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 	if strings.Contains(string(buildOutput), "secret build sdk") {
 		t.Fatalf("structured build failure leaked input path: %s", buildOutput)
 	}
+	command = exec.Command(binary, "run", "--format", "json", "--progress", "--sdk", filepath.Join(project, "secret run sdk"), ".")
+	command.Dir = project
+	command.Env = append(os.Environ(), "GOWORK=off")
+	runOutput, runErr := command.CombinedOutput()
+	var runExitError *exec.ExitError
+	if !errors.As(runErr, &runExitError) || runExitError.ExitCode() != 2 || !strings.Contains(string(runOutput), `"schema":"gopdsdk-progress/v1"`) || !strings.Contains(string(runOutput), `"command": "run"`) {
+		t.Fatalf("structured run failure: error = %v, output = %s", runErr, runOutput)
+	}
+	if strings.Contains(string(runOutput), "secret run sdk") {
+		t.Fatalf("structured run failure leaked input path: %s", runOutput)
+	}
 	assertExitCode(t, project, binary, 2, "check", "--format", "xml")
 	configPath := filepath.Join(project, ".gopdsdk-check.json")
 	if err := os.WriteFile(configPath, []byte(`{"schema":"gopdsdk-check-config/v1","unknown":true}`), 0o644); err != nil {

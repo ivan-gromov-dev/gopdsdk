@@ -121,6 +121,13 @@ the same planning, compilation, packaging, and cleanup stages. Failures use
 `build-failed`, `output-conflict`, or `cancelled`, retain exit code 2, and do
 not expose raw compiler or linker output.
 
+Device build failures use the same `failure.locations` containment and
+normalization rules as Simulator builds. TinyGo and GCC compilation failures,
+ELF link failures, and PDC packaging failures are distinguished as
+`compilation-failed`, `link-failed`, and `packaging-failed`. Coordinates from
+generated adapters, SDK setup sources, linker diagnostics outside the game,
+and other non-application files are omitted.
+
 `gopdsdk run device --format json` builds, installs, and sends the device launch
 command before returning `gopdsdk-run/v1` with target `device`, package,
 deployment and execution summaries, and build metrics. It deliberately has no

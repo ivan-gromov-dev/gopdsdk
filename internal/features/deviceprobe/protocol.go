@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 const buildResultSchema = "gopdsdk-build/v1"
@@ -59,7 +60,8 @@ func writeStructuredRunFailure(out io.Writer, ctx context.Context, err error, st
 	if ctx.Err() != nil {
 		category, action = "cancelled", "retry"
 	}
-	if writeErr := toolingprotocol.WriteFailure(out, "run device", category, &toolingprotocol.Remediation{Action: action}); writeErr != nil {
+	locations := protocolLocations(err)
+	if writeErr := toolingprotocol.WriteFailureWithLocations(out, "run device", category, &toolingprotocol.Remediation{Action: action}, locations); writeErr != nil {
 		return writeErr
 	}
 	return &toolingprotocol.SilentError{Err: err}
@@ -71,9 +73,26 @@ func writeStructuredBuildFailure(out io.Writer, ctx context.Context, err error) 
 		category, action = "cancelled", "retry"
 	} else if strings.Contains(err.Error(), "output already exists") {
 		category, action = "output-conflict", "select-output-or-force"
+	} else if command := tooldiagnostic.Action(err); command != "" {
+		switch {
+		case strings.HasPrefix(command, "compile"), strings.HasPrefix(command, "resolve"):
+			category = "compilation-failed"
+		case strings.HasPrefix(command, "link"):
+			category = "link-failed"
+		case strings.HasPrefix(command, "package"):
+			category = "packaging-failed"
+		}
 	}
-	if writeErr := toolingprotocol.WriteFailure(out, "build device", category, &toolingprotocol.Remediation{Action: action}); writeErr != nil {
+	if writeErr := toolingprotocol.WriteFailureWithLocations(out, "build device", category, &toolingprotocol.Remediation{Action: action}, protocolLocations(err)); writeErr != nil {
 		return writeErr
 	}
 	return &toolingprotocol.SilentError{Err: err}
+}
+
+func protocolLocations(err error) []toolingprotocol.SourceLocation {
+	var result []toolingprotocol.SourceLocation
+	for _, location := range tooldiagnostic.Locations(err) {
+		result = append(result, toolingprotocol.SourceLocation{Path: location.Path, Line: location.Line, Column: location.Column})
+	}
+	return result
 }

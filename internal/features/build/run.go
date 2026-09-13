@@ -2,7 +2,6 @@ package build
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 // ResultSchema identifies a successful structured Simulator build.
@@ -94,24 +94,20 @@ func writeStructuredFailure(out io.Writer, ctx context.Context, err error) error
 	} else if strings.Contains(err.Error(), "output already exists") {
 		category, action = "output-conflict", "select-output-or-force"
 	} else {
-		var command interface{ Action() string }
-		if errors.As(err, &command) {
+		if command := tooldiagnostic.Action(err); command != "" {
 			switch {
-			case strings.HasPrefix(command.Action(), "compile"):
+			case strings.HasPrefix(command, "compile"):
 				category = "compilation-failed"
-			case strings.HasPrefix(command.Action(), "link"):
+			case strings.HasPrefix(command, "link"):
 				category = "link-failed"
-			case strings.HasPrefix(command.Action(), "package"):
+			case strings.HasPrefix(command, "package"):
 				category = "packaging-failed"
 			}
 		}
 	}
 	var locations []toolingprotocol.SourceLocation
-	var located interface {
-		SourceLocations() []toolingprotocol.SourceLocation
-	}
-	if errors.As(err, &located) {
-		locations = located.SourceLocations()
+	for _, location := range tooldiagnostic.Locations(err) {
+		locations = append(locations, toolingprotocol.SourceLocation{Path: location.Path, Line: location.Line, Column: location.Column})
 	}
 	if writeErr := toolingprotocol.WriteFailureWithLocations(out, "build", category, &toolingprotocol.Remediation{Action: action}, locations); writeErr != nil {
 		return writeErr

@@ -3,10 +3,14 @@ package deviceprobe
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 func TestStructuredDeviceBuildResult(t *testing.T) {
@@ -85,3 +89,23 @@ func TestStructuredDeviceRunFailureCategories(t *testing.T) {
 type assertError string
 
 func (err assertError) Error() string { return string(err) }
+
+func TestStructuredDeviceCompilationFailureHasSafeLocation(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "game.go")
+	if err := os.WriteFile(source, []byte("package game\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := tooldiagnostic.Attach(tooldiagnostic.New("compile TinyGo PIC object", errors.New("exit status 1"), []byte(source+":9:4: secret source\n")), root)
+	var output bytes.Buffer
+	if structuredErr := writeStructuredBuildFailure(&output, t.Context(), err); structuredErr == nil {
+		t.Fatal("structured failure returned nil")
+	}
+	envelope, decodeErr := toolingprotocol.DecodeEnvelope(output.Bytes())
+	if decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if envelope.Failure == nil || envelope.Failure.Category != "compilation-failed" || len(envelope.Failure.Locations) != 1 || envelope.Failure.Locations[0].Path != "game.go" || strings.Contains(output.String(), "secret") {
+		t.Fatalf("failure = %+v, output = %s", envelope.Failure, output.String())
+	}
+}

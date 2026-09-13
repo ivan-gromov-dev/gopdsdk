@@ -77,6 +77,12 @@ requires an explicitly documented exception.
   compiler messages or source excerpts. Windows unit coverage exercises path
   containment, redaction, classification, and unsafe-location rejection; no
   SDK compilation was run for this change.
+- Extended safe source locations and command-stage categories to structured
+  device builds. Simulator and device pipelines now share one bounded parser
+  only because both consume the same compiler coordinate contract. Device
+  tests cover TinyGo classification, application-root containment, and source
+  text redaction. No TinyGo build, SDK packaging, USB, or hardware execution
+  was performed.
 
 ## v1.1.0 (2026-09-11)
 

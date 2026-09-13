@@ -4,25 +4,21 @@ package build
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/runtime/simabi"
-	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/pdxsource"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 const sdkModule = "github.com/ivan-gromov-dev/gopdsdk"
@@ -188,7 +184,7 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 			progress(config, "packaging")
 		}
 		if err := executePlannedCommand(ctx, planned); err != nil {
-			return Result{}, attachSourceLocations(err, app.Dir)
+			return Result{}, tooldiagnostic.Attach(err, app.Dir)
 		}
 		if index == 0 {
 			_ = os.Remove(filepath.Join(sourceDir, "pdex.h"))
@@ -282,91 +278,8 @@ func renderGoMod(sdk, app module) string {
 	return builder.String()
 }
 
-type toolCommandError struct {
-	action string
-	err    error
-	output []byte
-}
-
-func (err *toolCommandError) Error() string {
-	detail := strings.TrimSpace(string(err.output))
-	if detail == "" {
-		return fmt.Sprintf("%s: %v", err.action, err.err)
-	}
-	return fmt.Sprintf("%s: %v: %s", err.action, err.err, detail)
-}
-
-func (err *toolCommandError) Unwrap() error  { return err.err }
-func (err *toolCommandError) Action() string { return err.action }
-
 func commandError(action string, err error, output []byte) error {
-	return &toolCommandError{action: action, err: err, output: append([]byte(nil), output...)}
-}
-
-type sourceLocatedError struct {
-	err       error
-	locations []toolingprotocol.SourceLocation
-}
-
-func (err *sourceLocatedError) Error() string { return err.err.Error() }
-func (err *sourceLocatedError) Unwrap() error { return err.err }
-func (err *sourceLocatedError) SourceLocations() []toolingprotocol.SourceLocation {
-	return append([]toolingprotocol.SourceLocation(nil), err.locations...)
-}
-
-var compilerLocationPattern = regexp.MustCompile(`^(.+):([0-9]+):([0-9]+):(?: |$)`)
-
-func attachSourceLocations(err error, root string) error {
-	var commandErr *toolCommandError
-	if !errors.As(err, &commandErr) {
-		return err
-	}
-	root, rootErr := filepath.Abs(filepath.Clean(root))
-	if rootErr != nil {
-		return err
-	}
-	seen := make(map[toolingprotocol.SourceLocation]bool)
-	var locations []toolingprotocol.SourceLocation
-	for _, line := range strings.Split(string(commandErr.output), "\n") {
-		match := compilerLocationPattern.FindStringSubmatch(strings.TrimSpace(line))
-		if match == nil {
-			continue
-		}
-		path := filepath.Clean(filepath.FromSlash(match[1]))
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(root, path)
-		}
-		relative, relErr := filepath.Rel(root, path)
-		if relErr != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			continue
-		}
-		if info, statErr := os.Stat(path); statErr != nil || info.IsDir() {
-			continue
-		}
-		lineNumber, lineErr := strconv.Atoi(match[2])
-		column, columnErr := strconv.Atoi(match[3])
-		if lineErr != nil || columnErr != nil || lineNumber < 1 || column < 1 {
-			continue
-		}
-		location := toolingprotocol.SourceLocation{Path: filepath.ToSlash(relative), Line: lineNumber, Column: column}
-		if !seen[location] {
-			seen[location] = true
-			locations = append(locations, location)
-		}
-	}
-	if len(locations) == 0 {
-		return err
-	}
-	sort.Slice(locations, func(i, j int) bool {
-		if locations[i].Path != locations[j].Path {
-			return locations[i].Path < locations[j].Path
-		}
-		if locations[i].Line != locations[j].Line {
-			return locations[i].Line < locations[j].Line
-		}
-		return locations[i].Column < locations[j].Column
-	})
-	return &sourceLocatedError{err: err, locations: locations}
+	return tooldiagnostic.New(action, err, output)
 }
 
 func copyDirectory(source, target string) error {

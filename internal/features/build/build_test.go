@@ -11,6 +11,7 @@ import (
 
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 func TestRenderGoModForSameModule(t *testing.T) {
@@ -80,7 +81,7 @@ func TestStructuredBuildFailureIncludesOnlyApplicationLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	commandErr := commandError("compile Simulator shared library", errors.New("exit status 1"), []byte(source+":7:3: secret source text\n"+outside+":2:1: generated detail\n"+source+":7:3: duplicate\n"))
-	err := attachSourceLocations(commandErr, root)
+	err := tooldiagnostic.Attach(commandErr, root)
 	var output bytes.Buffer
 	if structuredErr := writeStructuredFailure(&output, t.Context(), err); structuredErr == nil {
 		t.Fatal("structured failure returned nil")

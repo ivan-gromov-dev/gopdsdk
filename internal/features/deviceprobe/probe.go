@@ -20,6 +20,7 @@ import (
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/pdxsource"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 // Result records the verified device toolchain stage.
@@ -163,7 +164,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	deviceProgress(config, "compilation")
 	for index, planned := range plan.Commands[:7] {
 		if _, err := runPlannedCommand(ctx, planned); err != nil {
-			return Result{}, err
+			return Result{}, tooldiagnostic.Attach(err, app.Dir)
 		}
 		if index == 2 {
 			bootstrap := bootstrapSource
@@ -182,7 +183,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	inspectionOutput, err := runPlannedCommand(ctx, plan.Commands[7])
 	if err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	inspection := inspectionOutput
 	for _, check := range []struct {
@@ -223,14 +224,14 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	undefinedOutput, err := runPlannedCommand(ctx, plan.Commands[8])
 	if err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	if unresolved := strongUndefinedSymbols(undefinedOutput); len(unresolved) != 0 {
 		return Result{}, fmt.Errorf("inspect unresolved ELF symbols: %s", strings.Join(unresolved, ", "))
 	}
 	symbolOutput, err := runPlannedCommand(ctx, plan.Commands[9])
 	if err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	lowerSymbols := strings.ToLower(symbolOutput)
 	for _, forbidden := range []string{"stm32", "initclk", "machine.tim"} {
@@ -262,7 +263,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write device pdxinfo: %w", err)
 	}
 	if _, err := runPlannedCommand(ctx, plan.Commands[10]); err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	packagedBinary := filepath.Join(pdxPath, "pdex.bin")
 	if err := requireNonEmptyFile(packagedBinary); err != nil {
@@ -625,11 +626,7 @@ func firstLine(value string) string {
 }
 
 func commandError(action string, err error, output []byte) error {
-	detail := strings.TrimSpace(string(output))
-	if detail == "" {
-		return fmt.Errorf("%s: %w", action, err)
-	}
-	return fmt.Errorf("%s: %w: %s", action, err, detail)
+	return tooldiagnostic.New(action, err, output)
 }
 
 func renderProbeSource(modulePath, applicationImport string) string {

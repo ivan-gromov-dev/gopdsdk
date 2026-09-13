@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/artifactreplace"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
@@ -294,20 +295,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		if err != nil {
 			return Result{}, fmt.Errorf("resolve output path: %w", err)
 		}
-		if info, statErr := os.Stat(outputPath); statErr == nil {
-			if !config.Replace {
-				return Result{}, fmt.Errorf("output already exists: %s", outputPath)
-			}
-			if !info.IsDir() {
-				return Result{}, fmt.Errorf("output path is not a directory: %s", outputPath)
-			}
-			if err := os.RemoveAll(outputPath); err != nil {
-				return Result{}, fmt.Errorf("replace output: %w", err)
-			}
-		} else if !os.IsNotExist(statErr) {
-			return Result{}, fmt.Errorf("inspect output path: %w", statErr)
-		}
-		if err := copyDirectory(pdxPath, outputPath); err != nil {
+		if err := artifactreplace.Directory(ctx, pdxPath, outputPath, config.Replace); err != nil {
 			return Result{}, fmt.Errorf("write output: %w", err)
 		}
 		artifactOutput = outputPath
@@ -438,23 +426,6 @@ func copyFile(source, destination string) error {
 		return err
 	}
 	return os.WriteFile(destination, contents, 0o644)
-}
-
-func copyDirectory(source, destination string) error {
-	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		relative, err := filepath.Rel(source, path)
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(destination, relative)
-		if entry.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		return copyFile(path, target)
-	})
 }
 
 func requireNonEmptyFile(path string) error {

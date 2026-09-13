@@ -77,6 +77,13 @@ requires an explicitly documented exception.
   compiler messages or source excerpts. Windows unit coverage exercises path
   containment, redaction, classification, and unsafe-location rejection; no
   SDK compilation was run for this change.
+- Replaced destructive `.pdx` overwrite with a shared transactional directory
+  commit for Simulator and device builds. New artifacts are fully copied to a
+  sibling staging directory before an existing target is backed up and the new
+  directory is renamed into place; commit failure restores the prior target.
+  Unit coverage verifies successful replacement, conflict preservation,
+  cancellation preservation, and temporary-sibling cleanup. No SDK build was
+  required for this filesystem-level evidence.
 - Extended safe source locations and command-stage categories to structured
   device builds. Simulator and device pipelines now share one bounded parser
   only because both consume the same compiler coordinate contract. Device

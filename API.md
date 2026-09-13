@@ -103,6 +103,15 @@ reject unknown event schemas. Cancellation propagates through the build
 context to owned child processes, after which reached cleanup runs before the
 final failure is returned.
 
+Simulator and device artifact replacement is transactional at the directory
+boundary. A build first copies the complete new `.pdx` into a uniquely named
+sibling staging directory. Without `--force`, an existing target remains an
+`output-conflict`. With `--force`, the existing directory is renamed to a
+sibling backup, the staged directory is renamed into place, and a failed commit
+restores the backup before returning. Cancellation before commit removes the
+staging directory and leaves the previous target unchanged. Successful commit
+removes the backup; temporary sibling paths are never reported as artifacts.
+
 `gopdsdk run --format json` builds with deterministic replacement semantics,
 launches Playdate Simulator, and returns `gopdsdk-run/v1` with target, package,
 normalized artifact path, and Simulator process ID. Its optional `--progress`

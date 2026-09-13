@@ -17,6 +17,7 @@ import (
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/initproject"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/simprobe"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/simrun"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
 )
 
 func main() {
@@ -31,6 +32,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		err = fmt.Errorf("expected a command (try \"gopdsdk doctor\")")
 	} else {
 		switch args[0] {
+		case "capabilities":
+			err = toolingprotocol.Run(ctx, args, stdout)
 		case "build":
 			if len(args) > 1 && args[1] == "device" {
 				err = deviceprobe.Run(ctx, args, stdout, stderr)

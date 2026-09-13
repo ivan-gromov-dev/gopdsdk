@@ -7,6 +7,16 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Began the post-1.1 IDE tooling contract with `gopdsdk capabilities`, the
+  versioned `gopdsdk-tooling-result/v1` command-result envelope, and the
+  `gopdsdk-tooling-capabilities/v1` manifest. The deterministic query exposes
+  command support, structured result/event schemas, optional fields, and
+  cancellation without requiring editors to parse human-readable output.
+  Unit and external-consumer CLI coverage verify deterministic output,
+  forward-compatible unknown fields, unknown-version rejection, and
+  cancellation. This is Windows unit and external-consumer CLI evidence only;
+  no editor UI, Simulator, USB, or physical-device behavior was exercised.
+
 ## v1.1.0 (2026-09-11)
 
 - Added the compatible `gopdsdk check` static-analysis CLI and `gopdsdk lsp`

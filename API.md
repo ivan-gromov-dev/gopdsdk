@@ -28,6 +28,28 @@ performance evidence import
 generated runtime bridges, CLI build plans, and example internals are not
 public API.
 
+## IDE tooling protocol
+
+`gopdsdk capabilities` writes exactly one UTF-8 JSON value followed by a
+newline to stdout and writes nothing to stderr on success. The value uses the
+`gopdsdk-tooling-result/v1` envelope and contains a
+`gopdsdk-tooling-capabilities/v1` result. Its lexically ordered `commands`
+records list each supported command, its available modes, structured result and
+progress-event schemas, optional fields, and whether work is cancellable. A
+client must select only an advertised mode and schema; an empty schema list
+means that no command-result form of that kind is supported. Existing commands
+retain human-readable output unless their own documented structured mode is
+selected.
+
+Tooling decoders must ignore unknown object fields and treat an unknown schema
+identifier as unsupported. Within a schema version, existing fields retain
+their meaning and new fields are optional. A successful envelope has `ok: true`
+and `result`; a failed envelope has `ok: false` and `failure`. Structured
+commands reserve stdout for protocol JSON. Human-readable process errors use
+stderr and a nonzero exit code until that command advertises a structured
+failure contract. Diagnostics must not include source text, environment
+values, credentials, or other secrets.
+
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or

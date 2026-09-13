@@ -38,6 +38,12 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 	if !strings.Contains(checkJSON, `"schema": "gopdsdk-check/v1"`) || !strings.Contains(checkJSON, `"diagnostics": []`) {
 		t.Fatalf("clean check JSON is incomplete:\n%s", checkJSON)
 	}
+	capabilitiesJSON := runTestCommand(t, project, binary, "capabilities")
+	for _, required := range []string{`"schema": "gopdsdk-tooling-result/v1"`, `"command": "capabilities"`, `"schema": "gopdsdk-tooling-capabilities/v1"`} {
+		if !strings.Contains(capabilitiesJSON, required) {
+			t.Fatalf("capabilities JSON does not contain %q:\n%s", required, capabilitiesJSON)
+		}
+	}
 	assertExitCode(t, project, binary, 2, "check", "--format", "xml")
 	configPath := filepath.Join(project, ".gopdsdk-check.json")
 	if err := os.WriteFile(configPath, []byte(`{"schema":"gopdsdk-check-config/v1","unknown":true}`), 0o644); err != nil {

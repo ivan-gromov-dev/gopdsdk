@@ -122,6 +122,20 @@ are categorized by the last reached operation as `build-failed`,
 `cancelled`. A successful install or launch command is USB evidence only and
 does not claim sustained physical execution or runtime correctness.
 
+`gopdsdk crashlog --format json` and `gopdsdk errorlog --format json` remain
+explicit user actions and return `gopdsdk-device-log/v1`. `metadata` contains
+the log kind, normalized mounted-file path, and exact byte count. `content` is
+separate and uses base64 so decoding reproduces the verbatim device bytes even
+when they are not valid UTF-8. The tooling layer never interprets, redacts, or
+rewrites successful device log content.
+
+Optional `--progress` reports reached `connection` and `retrieval` stages using
+the shared progress schema. Failures contain no device output or local path and
+use `not-connected`, `tool-not-found`, `log-not-found`, `retrieval-failed`, or
+`cancelled` with focused remediation. Structured log retrieval retains exit
+code 2. Merely discovering `pdutil` does not establish USB readiness, and no log
+is retrieved without one of these explicit commands.
+
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or

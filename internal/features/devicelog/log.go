@@ -3,6 +3,7 @@ package devicelog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,8 +24,19 @@ const (
 	ErrorLog Kind = "errorlog.txt"
 )
 
+var (
+	ErrNoDevice        = errors.New("no Playdate device detected")
+	ErrToolUnavailable = errors.New("pdutil is unavailable")
+	ErrLogNotFound     = errors.New("Playdate log is unavailable")
+	ErrRetrieval       = errors.New("Playdate log retrieval failed")
+)
+
 // Read mounts the Playdate data disk and returns the requested diagnostic log.
 func Read(ctx context.Context, sdkPath string, kind Kind) ([]byte, string, error) {
+	return read(ctx, sdkPath, kind, nil)
+}
+
+func read(ctx context.Context, sdkPath string, kind Kind, progress func(string)) ([]byte, string, error) {
 	if kind != CrashLog && kind != ErrorLog {
 		return nil, "", fmt.Errorf("unsupported Playdate log %q", kind)
 	}
@@ -41,27 +53,42 @@ func Read(ctx context.Context, sdkPath string, kind Kind) ([]byte, string, error
 	}
 	pdutil := filepath.Join(sdkPath, "bin", policy.PDUtilName)
 	if info, statErr := os.Stat(pdutil); statErr != nil || info.IsDir() {
-		return nil, "", fmt.Errorf("required file %s is unavailable", pdutil)
+		return nil, "", fmt.Errorf("%w: required file %s", ErrToolUnavailable, pdutil)
 	}
+	logProgress(progress, "connection")
 	if mountPath, ok := findMountedPlaydate(); ok {
+		logProgress(progress, "retrieval")
 		return readLog(mountPath, kind)
 	}
 	output, err := exec.CommandContext(ctx, pdutil, "datadisk").CombinedOutput()
 	if err != nil {
+		if strings.Contains(strings.ToLower(string(output)), "no playdate device detected") {
+			return nil, "", ErrNoDevice
+		}
 		return nil, "", commandError(err, output)
 	}
 	mountPath, err := parseMountPath(string(output))
 	if err != nil {
 		return nil, "", err
 	}
+	logProgress(progress, "retrieval")
 	return readLog(mountPath, kind)
+}
+
+func logProgress(progress func(string), stage string) {
+	if progress != nil {
+		progress(stage)
+	}
 }
 
 func readLog(mountPath string, kind Kind) ([]byte, string, error) {
 	logPath := filepath.Join(mountPath, string(kind))
 	contents, err := os.ReadFile(logPath)
 	if err != nil {
-		return nil, "", fmt.Errorf("read Playdate %s %s: %w", logLabel(kind), logPath, err)
+		if os.IsNotExist(err) {
+			return nil, "", fmt.Errorf("%w: %s", ErrLogNotFound, kind)
+		}
+		return nil, "", fmt.Errorf("%w: read %s: %v", ErrRetrieval, logLabel(kind), err)
 	}
 	return contents, logPath, nil
 }
@@ -126,15 +153,15 @@ func parseMountPath(output string) (string, error) {
 			return filepath.Clean(path), nil
 		}
 	}
-	return "", fmt.Errorf("pdutil did not report the mounted Playdate data disk: %s", strings.TrimSpace(output))
+	return "", fmt.Errorf("%w: pdutil did not report a mounted data disk", ErrRetrieval)
 }
 
 func commandError(err error, output []byte) error {
 	detail := strings.TrimSpace(string(output))
 	if detail == "" {
-		return fmt.Errorf("mount Playdate data disk: %w", err)
+		return fmt.Errorf("%w: mount data disk: %v", ErrRetrieval, err)
 	}
-	return fmt.Errorf("mount Playdate data disk: %w: %s", err, detail)
+	return fmt.Errorf("%w: mount data disk: %v: %s", ErrRetrieval, err, detail)
 }
 
 func logLabel(kind Kind) string {

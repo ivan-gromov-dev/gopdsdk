@@ -61,6 +61,14 @@ requires an explicitly documented exception.
   cancellation taking precedence. Unit tests cover result projection, stage
   classification, and redaction, while external-consumer CLI coverage uses a
   build-failure fixture. No USB or physical-device action was performed.
+- Added structured `crashlog` and `errorlog` retrieval with the
+  `gopdsdk-device-log/v1` schema. Metadata is separate from base64-encoded
+  verbatim bytes; optional progress distinguishes connection and retrieval.
+  Sentinel-backed failures provide redacted categories for missing tools,
+  absent devices, absent logs, retrieval errors, and cancellation. Unit tests
+  cover arbitrary-byte preservation, path normalization, classification, and
+  redaction; external-consumer CLI tests cover missing-tool failures. No USB
+  connection or device log was accessed.
 
 ## v1.1.0 (2026-09-11)
 

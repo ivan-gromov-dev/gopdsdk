@@ -135,6 +135,17 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 		if runErr == nil || !strings.Contains(string(output), "required file") {
 			t.Fatalf("%s routing: error = %v, output = %q; want missing pdutil error", commandName, runErr, output)
 		}
+		command = exec.Command(binary, commandName, "--format", "json", "--sdk", filepath.Join(project, "secret log sdk"))
+		command.Dir = project
+		command.Env = append(os.Environ(), "GOWORK=off")
+		output, runErr = command.CombinedOutput()
+		var exitError *exec.ExitError
+		if !errors.As(runErr, &exitError) || exitError.ExitCode() != 2 || !strings.Contains(string(output), `"command": "`+commandName+`"`) || !strings.Contains(string(output), `"category": "tool-not-found"`) {
+			t.Fatalf("%s structured failure: error = %v, output = %q", commandName, runErr, output)
+		}
+		if strings.Contains(string(output), "secret log sdk") {
+			t.Fatalf("%s structured failure leaked input path: %s", commandName, output)
+		}
 	}
 
 	for _, test := range []struct {

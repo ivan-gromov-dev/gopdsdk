@@ -38,6 +38,26 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 	if !strings.Contains(checkJSON, `"schema": "gopdsdk-check/v1"`) || !strings.Contains(checkJSON, `"diagnostics": []`) {
 		t.Fatalf("clean check JSON is incomplete:\n%s", checkJSON)
 	}
+	reportPath := filepath.Join(project, "check-report.json")
+	if err := os.WriteFile(reportPath, []byte(checkJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rulesJSON := runTestCommand(t, project, binary, "rules", "--format", "json")
+	for _, required := range []string{`"command": "rules"`, `"schema": "gopdsdk-analyzer-contracts/v1"`, `"rules": [`} {
+		if !strings.Contains(rulesJSON, required) {
+			t.Fatalf("rules JSON does not contain %q:\n%s", required, rulesJSON)
+		}
+	}
+	baselineJSON := runTestCommand(t, project, binary, "baseline", "create", "--input", "check-report.json", "--output", "baseline.json")
+	for _, required := range []string{`"command": "baseline create"`, `"schema": "gopdsdk-baseline-result/v1"`, `"entries": 0`} {
+		if !strings.Contains(baselineJSON, required) {
+			t.Fatalf("baseline create JSON does not contain %q:\n%s", required, baselineJSON)
+		}
+	}
+	baselineJSON = runTestCommand(t, project, binary, "baseline", "validate", "--input", "check-report.json", "--output", "baseline.json")
+	if !strings.Contains(baselineJSON, `"staleEntries": []`) {
+		t.Fatalf("baseline validation JSON is incomplete:\n%s", baselineJSON)
+	}
 	capabilitiesJSON := runTestCommand(t, project, binary, "capabilities")
 	for _, required := range []string{`"schema": "gopdsdk-tooling-result/v1"`, `"command": "capabilities"`, `"schema": "gopdsdk-tooling-capabilities/v1"`} {
 		if !strings.Contains(capabilitiesJSON, required) {

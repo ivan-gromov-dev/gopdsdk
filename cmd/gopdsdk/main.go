@@ -49,6 +49,15 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			} else {
 				err = analyzer.RunCheck(ctx, args, stdout, stderr, options)
 			}
+		case "rules", "baseline":
+			options, optionsErr := analyzer.DefaultCheckOptions()
+			if optionsErr != nil {
+				err = &analyzer.CommandError{Code: analyzer.ExitInternal, Err: optionsErr}
+			} else if args[0] == "rules" {
+				err = analyzer.RunRules(ctx, args, stdout, stderr, options)
+			} else {
+				err = analyzer.RunBaseline(ctx, args, stdout, stderr, options)
+			}
 		case "lsp":
 			options, optionsErr := analyzer.DefaultCheckOptions()
 			if optionsErr != nil {

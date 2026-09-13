@@ -15,6 +15,7 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	capabilities := Capabilities{Schema: CapabilitiesSchema, EnvelopeOptionalFields: []string{"failure.detail", "failure.locations", "failure.remediation", "failure.remediation.value"}, Commands: []CommandCapability{
+		{Name: "baseline", Modes: []string{"json"}, ResultSchemas: []string{"gopdsdk-baseline-result/v1"}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "build", Modes: []string{"json", "text"}, ResultSchemas: []string{"gopdsdk-build/v1"}, EventSchemas: []string{ProgressSchema}, OptionalFields: []string{"metrics"}, Cancellable: true},
 		{Name: "capabilities", Modes: []string{"json"}, ResultSchemas: []string{CapabilitiesSchema}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: false},
 		{Name: "check", Modes: []string{"json", "text"}, ResultSchemas: []string{"gopdsdk-check/v1"}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
@@ -24,6 +25,7 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		{Name: "init", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "lsp", Modes: []string{"lsp"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "probe", Modes: []string{"json", "text"}, ResultSchemas: []string{ProbeSchema}, EventSchemas: []string{}, OptionalFields: []string{"values"}, Cancellable: true},
+		{Name: "rules", Modes: []string{"json"}, ResultSchemas: []string{"gopdsdk-analyzer-contracts/v1"}, EventSchemas: []string{}, OptionalFields: []string{"contracts[].goSymbols", "contracts[].publicApi[].member", "contracts[].publicApi[].minimumPlaydateSDK", "contracts[].publicApi[].sinceGopdsdk", "rules[].experimental"}, Cancellable: true},
 		{Name: "run", Modes: []string{"json", "text"}, ResultSchemas: []string{"gopdsdk-run/v1"}, EventSchemas: []string{ProgressSchema}, OptionalFields: []string{"artifact", "deployment", "execution", "metrics", "pid"}, Cancellable: true},
 	}}
 	return WriteResult(out, "capabilities", capabilities)

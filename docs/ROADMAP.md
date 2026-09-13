@@ -1,7 +1,9 @@
 # Product roadmap
 
 Status: `v1.1.0` is prepared with the static-analyzer CLI and editor API;
-post-1.1 IDE tooling contracts are planned, updated 2026-09-13.
+post-1.1 IDE tooling contracts are implemented, updated 2026-09-13. Windows
+unit and external-consumer CLI evidence is complete; remaining platform and
+hardware evidence is listed below.
 
 This is the canonical post-1.0 planning document. Released capability and
 evidence live in [COMPATIBILITY.md](../COMPATIBILITY.md) and
@@ -50,9 +52,9 @@ they do not change the native public `playdate` API. Console-backed Simulator
 tasks and a basic `gopdsdk init` wizard may use the existing CLI, but an editor
 must not parse incidental human-readable output to provide rich or stable UI.
 
-Implement the shared SDK work once, in this order:
+The shared SDK work was implemented once in this order:
 
-1. **Protocol foundation and capability negotiation.** Define a versioned
+1. **Completed — protocol foundation and capability negotiation.** Define a versioned
    command-result envelope and, where applicable, a versioned stream of
    cancellable progress events. Add an explicit machine-readable capability
    query that reports supported commands, result/event schemas, and optional
@@ -60,28 +62,28 @@ Implement the shared SDK work once, in this order:
    existing human-readable CLI by default; structured mode must have a
    documented stdout/stderr and exit-code contract, deterministic ordering,
    forward-compatible decoding rules, and no secrets in diagnostics.
-2. **Read-only health and discovery.** Add versioned structured results for
+2. **Completed — read-only health and discovery.** Add versioned structured results for
    `doctor` and the Simulator, device-toolchain, and USB-connection probes.
    Records must distinguish discovery from readiness, identify each check and
    evidence level, carry typed failure categories, and expose focused
    remediation data without embedding editor-specific presentation. Executable
    discovery alone must never be reported as Simulator, device, or USB
    readiness.
-3. **Simulator build and run.** Add structured final results for `build` and
+3. **Completed — Simulator build and run.** Add structured final results for `build` and
    `run`, including target identity, source locations for build failures,
    artifact paths, typed failure categories, and progress stages for planning,
    compilation, packaging, launch, and cleanup where they apply. Cancellation
    must terminate owned child processes and leave artifact replacement rules
    deterministic. Validate through an external game and the official Simulator
    separately on each claimed host.
-4. **Device deployment and logs.** Extend the same schemas to device build,
+4. **Completed — device deployment and logs.** Extend the same schemas to device build,
    connection, install, launch, `crashlog`, and `errorlog` operations. Report
    build, connection, deployment, launch, and retrieval as distinct stages;
    never infer connection from tool discovery. Log retrieval remains an
    explicit user action, and its structured form must separate metadata and
    typed failures from verbatim device content. Device-build, USB, and physical
    execution evidence remain separate gates.
-5. **Analyzer administration.** Expose the existing version-matched rule
+5. **Completed — analyzer administration.** Expose the existing version-matched rule
    registry through a versioned machine-readable catalog rather than requiring
    clients to copy rule metadata. Add deterministic baseline
    create/update/validate operations around the existing
@@ -96,6 +98,14 @@ gopdsdk binary; and native CI on Windows, macOS, and Linux. Fixture-driven
 editor tests establish client integration only. SDK integration, Simulator,
 device build, USB, log retrieval, and physical-device claims require their
 corresponding separately named evidence.
+
+Windows unit and external-consumer CLI acceptance covers all five phases,
+including the analyzer catalog and baseline administration. The installed SDK
+3.1.1 Simulator probe also passed on Windows as SDK-integration evidence.
+Native CI confirmation on macOS and Linux, consistent structured device-build
+acceptance, USB connection and log retrieval, and physical-device execution
+remain separate open evidence gates; they are not inferred from discovery or
+fixture results.
 
 The stable protocol and command contracts belong in [API.md](../API.md) when
 implemented, with unreleased behavior and evidence in

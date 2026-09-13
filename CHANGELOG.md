@@ -7,6 +7,14 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed post-1.1 analyzer administration with the version-matched
+  `gopdsdk rules --format json` catalog and deterministic `gopdsdk baseline
+  create`, `update`, and `validate` operations. Baseline updates preserve
+  reasons for unchanged diagnostic identities, validation returns stale-entry
+  records, paths remain inside the module, and writes use same-directory
+  staging with rollback. Windows unit and external-consumer CLI coverage
+  exercise negotiation, deterministic catalog output, cancellation,
+  create/update/validate behavior, stale entries, containment, and cleanup.
 - Began the post-1.1 IDE tooling contract with `gopdsdk capabilities`, the
   versioned `gopdsdk-tooling-result/v1` command-result envelope, and the
   `gopdsdk-tooling-capabilities/v1` manifest. The deterministic query exposes
@@ -90,6 +98,13 @@ requires an explicitly documented exception.
   tests cover TinyGo classification, application-root containment, and source
   text redaction. No TinyGo build, SDK packaging, USB, or hardware execution
   was performed.
+- Re-ran the installed Playdate SDK 3.1.1 Simulator probe on Windows after the
+  complete tooling-contract implementation; it returned a successful
+  `gopdsdk-probe/v1` result and is SDK-integration evidence. A separate device
+  package probe succeeded in text mode, while the structured device probe did
+  not pass consistently and the explicit USB probe reported `not-connected`;
+  structured device-build, USB, log-retrieval, and physical-device evidence
+  therefore remain open rather than being inferred from tool discovery.
 
 ## v1.1.0 (2026-09-11)
 

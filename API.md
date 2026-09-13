@@ -41,6 +41,24 @@ means that no command-result form of that kind is supported. Existing commands
 retain human-readable output unless their own documented structured mode is
 selected.
 
+`gopdsdk rules --format json` returns the exact version-matched analyzer
+inventory used by the binary as `gopdsdk-analyzer-contracts/v1` inside the
+tooling-result envelope. Rules are ordered by identifier and include their
+family, default severity, confidence, targets, normative contract identifiers,
+experimental status, suppression policy, and safe-fix policy. Clients must not
+copy this metadata into an editor-specific catalog.
+
+`gopdsdk baseline create --input <report> --output <baseline>` creates a
+`gopdsdk-check-baseline/v1` file from a `gopdsdk-check/v1` report and refuses to
+replace an existing file. `baseline update` replaces the baseline with current
+report identities, preserves the reason for unchanged identities, and uses
+`--reason` for new entries. `baseline validate` validates the baseline and,
+when `--input` is supplied, reports identities absent from the current report
+as ordered `staleEntries`. All operations return
+`gopdsdk-baseline-result/v1` in the tooling-result envelope. Paths must remain
+inside the module root, entries are deterministic, and writes use a
+same-directory staging file with restoration if replacement fails.
+
 Tooling decoders must ignore unknown object fields and treat an unknown schema
 identifier as unsupported. Within a schema version, existing fields retain
 their meaning and new fields are optional. A successful envelope has `ok: true`

@@ -42,7 +42,7 @@ type Capabilities struct {
 }
 
 // CommandCapability describes one CLI command and its machine-readable
-// contracts. Empty schema lists mean that the command is human-readable only.
+// contracts. Modes state whether a command supports text, JSON, or LSP.
 type CommandCapability struct {
 	Name           string   `json:"name"`
 	Modes          []string `json:"modes"`
@@ -62,6 +62,22 @@ func NewEnvelope(command string, result any) (Envelope, error) {
 		return Envelope{}, fmt.Errorf("encode %s result: %w", command, err)
 	}
 	return Envelope{Schema: EnvelopeSchema, Command: command, OK: true, Result: data}, nil
+}
+
+// WriteResult writes one successful structured command result.
+func WriteResult(out io.Writer, command string, result any) error {
+	envelope, err := NewEnvelope(command, result)
+	if err != nil {
+		return err
+	}
+	data, err := envelope.JSON()
+	if err != nil {
+		return err
+	}
+	if _, err := out.Write(data); err != nil {
+		return fmt.Errorf("write %s result: %w", command, err)
+	}
+	return nil
 }
 
 // JSON returns deterministic UTF-8 JSON terminated by one newline.

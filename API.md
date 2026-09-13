@@ -50,6 +50,18 @@ stderr and a nonzero exit code until that command advertises a structured
 failure contract. Diagnostics must not include source text, environment
 values, credentials, or other secrets.
 
+`gopdsdk doctor --format json` returns `gopdsdk-doctor/v1` inside the
+tooling-result envelope. `tools` means executable discovery only. Each
+lexically ordered `checks` record independently reports `discovered`, readiness
+`status`, `evidenceLevel`, and optional typed `failureCategory` and structured
+`remediation`. `unverified` never means ready: Simulator and device-build
+checks become ready only after their corresponding `--probe` succeeds, while
+device deployment remains unverified until the separate connection probe is
+run. Structured paths use forward slashes on every host. The JSON form omits
+free-form probe errors so diagnostics cannot expose source, environment, or
+credential data; the default text form remains available for an interactive
+operator.
+
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or

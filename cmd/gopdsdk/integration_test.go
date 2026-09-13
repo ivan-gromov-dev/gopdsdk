@@ -44,6 +44,12 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 			t.Fatalf("capabilities JSON does not contain %q:\n%s", required, capabilitiesJSON)
 		}
 	}
+	doctorJSON := runTestCommand(t, project, binary, "doctor", "--format", "json", "--sdk", filepath.Join(project, "fake sdk"))
+	for _, required := range []string{`"command": "doctor"`, `"schema": "gopdsdk-doctor/v1"`, `"failureCategory": "not-found"`} {
+		if !strings.Contains(doctorJSON, required) {
+			t.Fatalf("doctor JSON does not contain %q:\n%s", required, doctorJSON)
+		}
+	}
 	assertExitCode(t, project, binary, 2, "check", "--format", "xml")
 	configPath := filepath.Join(project, ".gopdsdk-check.json")
 	if err := os.WriteFile(configPath, []byte(`{"schema":"gopdsdk-check-config/v1","unknown":true}`), 0o644); err != nil {

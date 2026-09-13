@@ -19,23 +19,12 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		{Name: "capabilities", Modes: []string{"json"}, ResultSchemas: []string{CapabilitiesSchema}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: false},
 		{Name: "check", Modes: []string{"json", "text"}, ResultSchemas: []string{"gopdsdk-check/v1"}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "crashlog", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
-		{Name: "doctor", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
+		{Name: "doctor", Modes: []string{"json", "text"}, ResultSchemas: []string{"gopdsdk-doctor/v1"}, EventSchemas: []string{}, OptionalFields: []string{"sdk", "tools[].version", "checks[].failureCategory", "checks[].remediation", "checks[].remediation.value"}, Cancellable: true},
 		{Name: "errorlog", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "init", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "lsp", Modes: []string{"lsp"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "probe", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "run", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 	}}
-	envelope, err := NewEnvelope("capabilities", capabilities)
-	if err != nil {
-		return err
-	}
-	data, err := envelope.JSON()
-	if err != nil {
-		return err
-	}
-	if _, err := out.Write(data); err != nil {
-		return fmt.Errorf("write capabilities: %w", err)
-	}
-	return nil
+	return WriteResult(out, "capabilities", capabilities)
 }

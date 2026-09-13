@@ -16,6 +16,13 @@ requires an explicitly documented exception.
   forward-compatible unknown fields, unknown-version rejection, and
   cancellation. This is Windows unit and external-consumer CLI evidence only;
   no editor UI, Simulator, USB, or physical-device behavior was exercised.
+- Added `gopdsdk doctor --format json` with the versioned
+  `gopdsdk-doctor/v1` result. The schema separates tool discovery from
+  readiness, labels evidence, provides typed failures and focused remediation,
+  normalizes paths, and excludes raw probe errors. Unit and external-consumer
+  CLI tests cover the envelope and the discovery/readiness distinction. The
+  probes were not executed by these tests, so Simulator, device-build, USB,
+  and physical-device readiness are not claimed.
 
 ## v1.1.0 (2026-09-11)
 

@@ -45,3 +45,43 @@ func TestStructuredDeviceBuildFailureAndPlanningProgress(t *testing.T) {
 		t.Fatalf("progress = %q", stderr.String())
 	}
 }
+
+func TestStructuredDeviceRunResult(t *testing.T) {
+	var output bytes.Buffer
+	result := Result{Package: "example.com/game", Deploy: "installed", Run: "launched", Metrics: Metrics{StaticRAM: 10, ELF: 20, PDX: 30}}
+	if err := writeStructuredRunResult(&output, result); err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := toolingprotocol.DecodeEnvelope(output.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var structured structuredRunResult
+	if err := json.Unmarshal(envelope.Result, &structured); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Command != "run device" || structured.Schema != runResultSchema || structured.Target != "device" || structured.Deployment != "installed" || structured.Execution != "launched" || structured.Metrics.ELFBytes != 20 {
+		t.Fatalf("structured result = %+v, envelope = %+v", structured, envelope)
+	}
+}
+
+func TestStructuredDeviceRunFailureCategories(t *testing.T) {
+	for _, test := range []struct{ stage, category string }{{"planning", "build-failed"}, {"deployment", "deployment-failed"}, {"launch", "launch-failed"}} {
+		var output bytes.Buffer
+		err := writeStructuredRunFailure(&output, t.Context(), assertError("secret detail"), test.stage)
+		if err == nil {
+			t.Fatalf("stage %s returned no error", test.stage)
+		}
+		envelope, decodeErr := toolingprotocol.DecodeEnvelope(output.Bytes())
+		if decodeErr != nil {
+			t.Fatal(decodeErr)
+		}
+		if envelope.Failure == nil || envelope.Failure.Category != test.category || strings.Contains(output.String(), "secret") {
+			t.Fatalf("stage %s envelope = %+v", test.stage, envelope)
+		}
+	}
+}
+
+type assertError string
+
+func (err assertError) Error() string { return string(err) }

@@ -318,6 +318,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		pending = "device deployment, hardware execution, and conservative-GC soak"
 	}
 	if config.Install || config.Run {
+		deviceProgress(config, "deployment")
 		pdutil := filepath.Join(sdkPath, "bin", policy.PDUtilName)
 		if info, statErr := os.Stat(pdutil); statErr != nil || info.IsDir() {
 			return Result{}, fmt.Errorf("required file %s is unavailable", pdutil)
@@ -332,6 +333,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			pending = "hardware execution and conservative-GC soak"
 		}
 		if config.Run {
+			deviceProgress(config, "launch")
 			runOutput, err := runDeviceProbe(ctx, workDir, pdutil, "/Games/"+pdxName)
 			if err != nil {
 				return Result{}, err

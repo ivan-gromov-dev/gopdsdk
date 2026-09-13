@@ -76,8 +76,7 @@ An executed probe failure writes `ok: false` with a stable category and
 structured remediation, returns exit code 2, and does not repeat the raw error
 on stderr. Current categories are `cancelled`, `not-connected`, and
 `probe-failed`. Argument and flag errors occur before probe execution and retain
-the normal human-readable stderr contract. `--format json` is not yet supported
-by `run device`.
+the normal human-readable stderr contract.
 
 `gopdsdk build --format json` returns a successful Simulator build as
 `gopdsdk-build/v1`, including target identity, application import path, and a
@@ -112,6 +111,16 @@ physical execution. Optional `--progress` emits command `build device` with
 the same planning, compilation, packaging, and cleanup stages. Failures use
 `build-failed`, `output-conflict`, or `cancelled`, retain exit code 2, and do
 not expose raw compiler or linker output.
+
+`gopdsdk run device --format json` builds, installs, and sends the device launch
+command before returning `gopdsdk-run/v1` with target `device`, package,
+deployment and execution summaries, and build metrics. It deliberately has no
+Simulator PID or persistent artifact field. Optional progress adds distinct
+`deployment` and `launch` stages between packaging and final cleanup. Failures
+are categorized by the last reached operation as `build-failed`,
+`deployment-failed`, or `launch-failed`; cancellation takes precedence as
+`cancelled`. A successful install or launch command is USB evidence only and
+does not claim sustained physical execution or runtime correctness.
 
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official

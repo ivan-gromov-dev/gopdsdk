@@ -54,6 +54,13 @@ requires an explicitly documented exception.
   external-consumer CLI tests exercise deterministic success projection and a
   redacted failure fixture. No device build, USB operation, or hardware
   execution was performed.
+- Added `gopdsdk run device --format json` with target-specific
+  `gopdsdk-run/v1` deployment, execution, and build-metric fields. Structured
+  progress distinguishes device build, deployment, launch, and cleanup;
+  failures retain the last operational stage as a typed category, with
+  cancellation taking precedence. Unit tests cover result projection, stage
+  classification, and redaction, while external-consumer CLI coverage uses a
+  build-failure fixture. No USB or physical-device action was performed.
 
 ## v1.1.0 (2026-09-11)
 

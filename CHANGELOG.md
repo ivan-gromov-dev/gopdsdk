@@ -69,6 +69,14 @@ requires an explicitly documented exception.
   cover arbitrary-byte preservation, path normalization, classification, and
   redaction; external-consumer CLI tests cover missing-tool failures. No USB
   connection or device log was accessed.
+- Added source-aware structured Simulator build failures. Verified compiler
+  coordinates inside the application root are normalized, deduplicated, and
+  sorted into `failure.locations`; generated, external, nonexistent, and
+  absolute output paths are excluded from the protocol. Known command stages
+  distinguish compilation, linking, and packaging failures without exposing
+  compiler messages or source excerpts. Windows unit coverage exercises path
+  containment, redaction, classification, and unsafe-location rejection; no
+  SDK compilation was run for this change.
 
 ## v1.1.0 (2026-09-11)
 

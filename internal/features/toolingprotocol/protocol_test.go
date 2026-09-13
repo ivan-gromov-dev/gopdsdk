@@ -102,3 +102,12 @@ func TestWriteProgressProducesOneDeterministicEvent(t *testing.T) {
 		t.Fatal("invalid progress event accepted")
 	}
 }
+
+func TestFailureRejectsUnsafeSourceLocations(t *testing.T) {
+	for _, path := range []string{"", "../game.go", "/tmp/game.go", `C:\game.go`} {
+		err := WriteFailureWithLocations(&bytes.Buffer{}, "build", "compilation-failed", nil, []SourceLocation{{Path: path, Line: 1, Column: 1}})
+		if err == nil {
+			t.Fatalf("unsafe path %q accepted", path)
+		}
+	}
+}

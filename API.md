@@ -85,6 +85,15 @@ with `build-failed`, `output-conflict`, or `cancelled` and a structured
 remediation action; exit code 2 is retained and raw tool output is not emitted
 in the structured result. Dry-run plans remain text-only.
 
+When the Simulator compiler reports one-based file coordinates, structured
+failures classify the operation as `compilation-failed` and may include
+`failure.locations` records containing only application-relative slash paths,
+line, and column. Duplicate locations are removed and records are sorted by
+path and position. Coordinates outside the application root, generated build
+workspace files, nonexistent files, raw compiler messages, and source excerpts
+are omitted. Link and package command failures use `link-failed` and
+`packaging-failed` respectively when the failing stage is known.
+
 Adding `--progress` (which requires JSON format) reserves stdout for the final
 envelope and writes `gopdsdk-progress/v1` events as compact NDJSON on stderr.
 Events have a one-based monotonically increasing sequence and the stable stages

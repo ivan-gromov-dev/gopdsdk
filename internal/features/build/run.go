@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -92,8 +93,27 @@ func writeStructuredFailure(out io.Writer, ctx context.Context, err error) error
 		category, action = "cancelled", "retry"
 	} else if strings.Contains(err.Error(), "output already exists") {
 		category, action = "output-conflict", "select-output-or-force"
+	} else {
+		var command interface{ Action() string }
+		if errors.As(err, &command) {
+			switch {
+			case strings.HasPrefix(command.Action(), "compile"):
+				category = "compilation-failed"
+			case strings.HasPrefix(command.Action(), "link"):
+				category = "link-failed"
+			case strings.HasPrefix(command.Action(), "package"):
+				category = "packaging-failed"
+			}
+		}
 	}
-	if writeErr := toolingprotocol.WriteFailure(out, "build", category, &toolingprotocol.Remediation{Action: action}); writeErr != nil {
+	var locations []toolingprotocol.SourceLocation
+	var located interface {
+		SourceLocations() []toolingprotocol.SourceLocation
+	}
+	if errors.As(err, &located) {
+		locations = located.SourceLocations()
+	}
+	if writeErr := toolingprotocol.WriteFailureWithLocations(out, "build", category, &toolingprotocol.Remediation{Action: action}, locations); writeErr != nil {
 		return writeErr
 	}
 	return &toolingprotocol.SilentError{Err: err}

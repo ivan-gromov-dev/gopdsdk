@@ -3,6 +3,8 @@ package build
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -64,6 +66,35 @@ func TestRunStructuredFailureAndProgressAreSeparated(t *testing.T) {
 	}
 	if strings.Contains(stdout.String(), sdkPath) {
 		t.Fatalf("failure leaked path: %s", stdout.String())
+	}
+}
+
+func TestStructuredBuildFailureIncludesOnlyApplicationLocations(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "game.go")
+	if err := os.WriteFile(source, []byte("package game\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "generated.go")
+	if err := os.WriteFile(outside, []byte("package generated\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	commandErr := commandError("compile Simulator shared library", errors.New("exit status 1"), []byte(source+":7:3: secret source text\n"+outside+":2:1: generated detail\n"+source+":7:3: duplicate\n"))
+	err := attachSourceLocations(commandErr, root)
+	var output bytes.Buffer
+	if structuredErr := writeStructuredFailure(&output, t.Context(), err); structuredErr == nil {
+		t.Fatal("structured failure returned nil")
+	}
+	envelope, decodeErr := toolingprotocol.DecodeEnvelope(output.Bytes())
+	if decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if envelope.Failure == nil || envelope.Failure.Category != "compilation-failed" || len(envelope.Failure.Locations) != 1 {
+		t.Fatalf("failure = %+v", envelope.Failure)
+	}
+	location := envelope.Failure.Locations[0]
+	if location.Path != "game.go" || location.Line != 7 || location.Column != 3 || strings.Contains(output.String(), "secret") || strings.Contains(output.String(), outside) {
+		t.Fatalf("location/output = %+v / %s", location, output.String())
 	}
 }
 

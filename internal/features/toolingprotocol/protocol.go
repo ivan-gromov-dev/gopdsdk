@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 const (
@@ -30,9 +31,17 @@ type Envelope struct {
 // Failure is a stable, presentation-independent failure record. Detail is
 // intentionally optional and must not contain environment values or secrets.
 type Failure struct {
-	Category    string       `json:"category"`
-	Detail      string       `json:"detail,omitempty"`
-	Remediation *Remediation `json:"remediation,omitempty"`
+	Category    string           `json:"category"`
+	Detail      string           `json:"detail,omitempty"`
+	Remediation *Remediation     `json:"remediation,omitempty"`
+	Locations   []SourceLocation `json:"locations,omitempty"`
+}
+
+// SourceLocation is a one-based location in a workspace-relative source file.
+type SourceLocation struct {
+	Path   string `json:"path"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
 }
 
 // Remediation is a presentation-independent recovery action.
@@ -147,7 +156,13 @@ func WriteResult(out io.Writer, command string, result any) error {
 
 // WriteFailure writes one structured command failure.
 func WriteFailure(out io.Writer, command, category string, remediation *Remediation) error {
-	envelope := Envelope{Schema: EnvelopeSchema, Command: command, OK: false, Failure: &Failure{Category: category, Remediation: remediation}}
+	return WriteFailureWithLocations(out, command, category, remediation, nil)
+}
+
+// WriteFailureWithLocations writes a structured failure with verified source
+// coordinates. Callers must provide only workspace-relative paths.
+func WriteFailureWithLocations(out io.Writer, command, category string, remediation *Remediation, locations []SourceLocation) error {
+	envelope := Envelope{Schema: EnvelopeSchema, Command: command, OK: false, Failure: &Failure{Category: category, Remediation: remediation, Locations: locations}}
 	data, err := envelope.JSON()
 	if err != nil {
 		return err
@@ -205,6 +220,13 @@ func validateEnvelope(envelope Envelope) error {
 	}
 	if envelope.Failure != nil && envelope.Failure.Category == "" {
 		return fmt.Errorf("tooling result failure category is required")
+	}
+	if envelope.Failure != nil {
+		for _, location := range envelope.Failure.Locations {
+			if location.Path == "" || strings.HasPrefix(location.Path, "/") || strings.ContainsAny(location.Path, `\:`) || location.Path == ".." || strings.HasPrefix(location.Path, "../") || location.Line < 1 || location.Column < 1 {
+				return fmt.Errorf("tooling result contains invalid source location")
+			}
+		}
 	}
 	if envelope.OK == (envelope.Failure != nil) || (envelope.OK && len(envelope.Result) == 0) || (!envelope.OK && len(envelope.Result) != 0) {
 		return fmt.Errorf("tooling result success and failure fields are inconsistent")

@@ -77,3 +77,14 @@ func TestCapabilitiesRejectArgumentsAndCancellation(t *testing.T) {
 		t.Fatal("Run ignored cancellation")
 	}
 }
+
+func TestDecodeProbeResultAllowsUnknownFieldsAndRejectsVersions(t *testing.T) {
+	data := []byte(`{"schema":"gopdsdk-probe/v1","probe":"simulator","discovered":true,"ready":true,"evidenceLevel":"sdk-integration","values":[],"future":true}`)
+	if _, err := DecodeProbeResult(data); err != nil {
+		t.Fatalf("unknown field rejected: %v", err)
+	}
+	unknown := bytes.Replace(data, []byte(ProbeSchema), []byte("gopdsdk-probe/v2"), 1)
+	if _, err := DecodeProbeResult(unknown); err == nil || !strings.Contains(err.Error(), "unsupported probe result schema") {
+		t.Fatalf("unknown schema error = %v", err)
+	}
+}

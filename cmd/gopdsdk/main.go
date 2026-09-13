@@ -88,7 +88,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if err != nil {
-		fmt.Fprintln(stderr, "gopdsdk:", err)
+		if silent, ok := err.(interface{ Silent() bool }); !ok || !silent.Silent() {
+			fmt.Fprintln(stderr, "gopdsdk:", err)
+		}
 		if coded, ok := err.(interface{ ExitCode() int }); ok {
 			return coded.ExitCode()
 		}

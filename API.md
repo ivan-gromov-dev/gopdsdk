@@ -62,6 +62,23 @@ free-form probe errors so diagnostics cannot expose source, environment, or
 credential data; the default text form remains available for an interactive
 operator.
 
+`gopdsdk probe simulator --format json`, `gopdsdk probe device --format
+json`, and `gopdsdk probe connection --format json` return the shared
+`gopdsdk-probe/v1` result. The result identifies the probe, prerequisite
+discovery, readiness, evidence level, and a name-sorted list of typed values.
+Simulator readiness represents an SDK-integration build/package probe and does
+not claim that the Simulator was launched unless the optional event value is
+present. Device readiness represents a device build only. Connection readiness
+represents the explicit read-only USB probe only; executable discovery alone
+cannot produce it.
+
+An executed probe failure writes `ok: false` with a stable category and
+structured remediation, returns exit code 2, and does not repeat the raw error
+on stderr. Current categories are `cancelled`, `not-connected`, and
+`probe-failed`. Argument and flag errors occur before probe execution and retain
+the normal human-readable stderr contract. `--format json` is not yet supported
+by `build device` or `run device`.
+
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or

@@ -50,6 +50,23 @@ func TestCLIExternalConsumerWorkflow(t *testing.T) {
 			t.Fatalf("doctor JSON does not contain %q:\n%s", required, doctorJSON)
 		}
 	}
+	for _, arguments := range [][]string{
+		{"probe", "simulator", "--format", "json", "--sdk", filepath.Join(project, "secret simulator sdk")},
+		{"probe", "device", "--format", "json", "--sdk", filepath.Join(project, "secret device sdk")},
+		{"probe", "connection", "--format", "json", "--sdk", filepath.Join(project, "secret usb sdk")},
+	} {
+		command := exec.Command(binary, arguments...)
+		command.Dir = project
+		command.Env = append(os.Environ(), "GOWORK=off")
+		output, runErr := command.CombinedOutput()
+		var exitError *exec.ExitError
+		if !errors.As(runErr, &exitError) || exitError.ExitCode() != 2 || !strings.Contains(string(output), `"schema": "gopdsdk-tooling-result/v1"`) || !strings.Contains(string(output), `"ok": false`) {
+			t.Fatalf("%v structured failure: error = %v, output = %s", arguments, runErr, output)
+		}
+		if strings.Contains(string(output), "secret") {
+			t.Fatalf("%v leaked input path: %s", arguments, output)
+		}
+	}
 	assertExitCode(t, project, binary, 2, "check", "--format", "xml")
 	configPath := filepath.Join(project, ".gopdsdk-check.json")
 	if err := os.WriteFile(configPath, []byte(`{"schema":"gopdsdk-check-config/v1","unknown":true}`), 0o644); err != nil {

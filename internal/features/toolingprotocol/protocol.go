@@ -30,9 +30,48 @@ type Envelope struct {
 // Failure is a stable, presentation-independent failure record. Detail is
 // intentionally optional and must not contain environment values or secrets.
 type Failure struct {
-	Category string `json:"category"`
-	Detail   string `json:"detail,omitempty"`
+	Category    string       `json:"category"`
+	Detail      string       `json:"detail,omitempty"`
+	Remediation *Remediation `json:"remediation,omitempty"`
 }
+
+// Remediation is a presentation-independent recovery action.
+type Remediation struct {
+	Action string `json:"action"`
+	Value  string `json:"value,omitempty"`
+}
+
+// ProbeResult is shared by read-only Simulator, device-toolchain, and USB
+// connection probes.
+type ProbeResult struct {
+	Schema        string       `json:"schema"`
+	Probe         string       `json:"probe"`
+	Discovered    bool         `json:"discovered"`
+	Ready         bool         `json:"ready"`
+	EvidenceLevel string       `json:"evidenceLevel"`
+	Values        []ProbeValue `json:"values"`
+}
+
+type ProbeValue struct {
+	Name  string `json:"name"`
+	Value any    `json:"value"`
+}
+
+// DecodeProbeResult accepts additive fields and rejects unknown schema
+// versions.
+func DecodeProbeResult(data []byte) (ProbeResult, error) {
+	var result ProbeResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		return ProbeResult{}, fmt.Errorf("decode probe result: %w", err)
+	}
+	if result.Schema != ProbeSchema {
+		return ProbeResult{}, fmt.Errorf("unsupported probe result schema %q", result.Schema)
+	}
+	return result, nil
+}
+
+// ProbeSchema identifies the stable read-only probe result.
+const ProbeSchema = "gopdsdk-probe/v1"
 
 // Capabilities describes the structured subset supported by this binary.
 type Capabilities struct {
@@ -80,6 +119,28 @@ func WriteResult(out io.Writer, command string, result any) error {
 	return nil
 }
 
+// WriteFailure writes one structured command failure.
+func WriteFailure(out io.Writer, command, category string, remediation *Remediation) error {
+	envelope := Envelope{Schema: EnvelopeSchema, Command: command, OK: false, Failure: &Failure{Category: category, Remediation: remediation}}
+	data, err := envelope.JSON()
+	if err != nil {
+		return err
+	}
+	if _, err := out.Write(data); err != nil {
+		return fmt.Errorf("write %s failure: %w", command, err)
+	}
+	return nil
+}
+
+// SilentError preserves failure and exit semantics after a structured error
+// has already been written, without duplicating it on stderr.
+type SilentError struct{ Err error }
+
+func (err *SilentError) Error() string { return err.Err.Error() }
+func (err *SilentError) Unwrap() error { return err.Err }
+func (err *SilentError) Silent() bool  { return true }
+func (err *SilentError) ExitCode() int { return 2 }
+
 // JSON returns deterministic UTF-8 JSON terminated by one newline.
 func (envelope Envelope) JSON() ([]byte, error) {
 	if err := validateEnvelope(envelope); err != nil {
@@ -115,6 +176,9 @@ func validateEnvelope(envelope Envelope) error {
 	}
 	if envelope.Command == "" {
 		return fmt.Errorf("tooling result command is required")
+	}
+	if envelope.Failure != nil && envelope.Failure.Category == "" {
+		return fmt.Errorf("tooling result failure category is required")
 	}
 	if envelope.OK == (envelope.Failure != nil) || (envelope.OK && len(envelope.Result) == 0) || (!envelope.OK && len(envelope.Result) != 0) {
 		return fmt.Errorf("tooling result success and failure fields are inconsistent")

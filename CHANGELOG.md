@@ -23,6 +23,15 @@ requires an explicitly documented exception.
   CLI tests cover the envelope and the discovery/readiness distinction. The
   probes were not executed by these tests, so Simulator, device-build, USB,
   and physical-device readiness are not claimed.
+- Added `--format json` to the read-only Simulator, device-toolchain, and USB
+  connection probes using the shared `gopdsdk-probe/v1` schema. Successful
+  results identify discovery, readiness, exact evidence level, and typed
+  values; executed failures retain a nonzero exit code while returning a
+  redacted category and remediation without duplicating raw errors on stderr.
+  Unit and external-consumer CLI tests cover negotiation, unknown versions,
+  deterministic failure envelopes, and redaction. These tests intentionally
+  exercise failure fixtures only and do not claim SDK integration,
+  device-build, USB, or physical-device readiness.
 
 ## v1.1.0 (2026-09-11)
 

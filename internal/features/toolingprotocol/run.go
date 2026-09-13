@@ -23,7 +23,7 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		{Name: "errorlog", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "init", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "lsp", Modes: []string{"lsp"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
-		{Name: "probe", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
+		{Name: "probe", Modes: []string{"json", "text"}, ResultSchemas: []string{ProbeSchema}, EventSchemas: []string{}, OptionalFields: []string{"values"}, Cancellable: true},
 		{Name: "run", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 	}}
 	return WriteResult(out, "capabilities", capabilities)

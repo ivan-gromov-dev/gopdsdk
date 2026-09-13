@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 )
 
@@ -28,11 +29,18 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	force := flags.Bool("force", false, "replace an existing .pdx output")
 	dryRun := flags.Bool("dry-run", false, "print the build plan without executing tools")
 	memory := flags.String("memory", string(buildplan.DeviceMemoryConservative), "device memory strategy: conservative (default) or none (legacy diagnostic)")
+	format := flags.String("format", "text", "output format for probe device: text or json")
 	if err := flags.Parse(args[2:]); err != nil {
 		return err
 	}
 	if flags.NArg() > 1 {
 		return fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+	if *format != "text" && *format != "json" {
+		return fmt.Errorf("unsupported device probe format %q", *format)
+	}
+	if *format == "json" && args[0] != "probe" {
+		return fmt.Errorf("--format json is currently supported only by \"gopdsdk probe device\"")
 	}
 	application := "./examples/hello"
 	if buildDevice || runDevice {
@@ -60,7 +68,26 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	result, err := Probe(ctx, Config{SDKPath: *sdkPath, Application: application, Output: *output, Replace: *force || runDevice, Persist: buildDevice, Install: *install || runDevice, Run: runDevice, ArtifactsDir: *artifactsDir, Memory: memoryStrategy})
 	if err != nil {
+		if *format == "json" {
+			category := "probe-failed"
+			if ctx.Err() != nil {
+				category = "cancelled"
+			}
+			if writeErr := toolingprotocol.WriteFailure(stdout, "probe device", category, &toolingprotocol.Remediation{Action: "inspect-device-toolchain"}); writeErr != nil {
+				return writeErr
+			}
+			return &toolingprotocol.SilentError{Err: err}
+		}
 		return err
+	}
+	if *format == "json" {
+		values := []toolingprotocol.ProbeValue{
+			{Name: "compiler", Value: result.GCC}, {Name: "deployment", Value: result.Deploy}, {Name: "elfBytes", Value: result.Metrics.ELF},
+			{Name: "execution", Value: result.Run}, {Name: "export", Value: result.Export}, {Name: "format", Value: result.Format},
+			{Name: "output", Value: filepath.ToSlash(result.Output)}, {Name: "package", Value: result.Package}, {Name: "pdxBytes", Value: result.Metrics.PDX},
+			{Name: "pending", Value: result.Pending}, {Name: "staticRAMBytes", Value: result.Metrics.StaticRAM}, {Name: "tinygo", Value: result.TinyGo},
+		}
+		return toolingprotocol.WriteResult(stdout, "probe device", toolingprotocol.ProbeResult{Schema: toolingprotocol.ProbeSchema, Probe: "device", Discovered: true, Ready: true, EvidenceLevel: "device-build", Values: values})
 	}
 	_, err = fmt.Fprintf(stdout, "Device package stage: READY\nTinyGo:              %s\nCompiler:            %s\nELF:                 %s\nStatic RAM:          %d bytes\nELF size:            %d bytes\nPDX size:            %d bytes\nExport:              %s\nPackage:             %s\nOutput:              %s\nDeployment:          %s\nExecution:           %s\nStill unverified:    %s\n",
 		result.TinyGo, result.GCC, result.Format, result.Metrics.StaticRAM, result.Metrics.ELF, result.Metrics.PDX, result.Export, result.Package, result.Output, result.Deploy, result.Run, result.Pending)

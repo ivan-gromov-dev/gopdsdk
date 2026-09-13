@@ -24,10 +24,11 @@ const sdkModule = "github.com/ivan-gromov-dev/gopdsdk"
 
 // Config identifies a Simulator application build.
 type Config struct {
-	SDKPath string
-	Package string
-	Output  string
-	Replace bool
+	SDKPath  string
+	Package  string
+	Output   string
+	Replace  bool
+	Progress func(string)
 }
 
 // Result describes the produced Simulator artifact.
@@ -52,6 +53,7 @@ type packageInfo struct {
 
 // Simulator builds an importable Go package into a Playdate Simulator .pdx.
 func Simulator(ctx context.Context, config Config) (Result, error) {
+	progress(config, "planning")
 	policy, err := hostpolicy.For(runtime.GOOS)
 	if err != nil {
 		return Result{}, err
@@ -139,6 +141,7 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, err
 	}
 	defer cleanupArtifacts(cleanupPaths)
+	defer progress(config, "cleanup")
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create Source directory: %w", err)
@@ -174,6 +177,11 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 	}
 
 	for index, planned := range plan.Commands {
+		if index == 0 {
+			progress(config, "compilation")
+		} else if index == 1 {
+			progress(config, "packaging")
+		}
 		if err := executePlannedCommand(ctx, planned); err != nil {
 			return Result{}, err
 		}
@@ -191,6 +199,12 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write output: %w", err)
 	}
 	return Result{PackageImport: app.ImportPath, Output: output}, nil
+}
+
+func progress(config Config, stage string) {
+	if config.Progress != nil {
+		config.Progress(stage)
+	}
 }
 
 func lookPathAny(candidates []string) (string, error) {

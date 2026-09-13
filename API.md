@@ -79,6 +79,22 @@ on stderr. Current categories are `cancelled`, `not-connected`, and
 the normal human-readable stderr contract. `--format json` is not yet supported
 by `build device` or `run device`.
 
+`gopdsdk build --format json` returns a successful Simulator build as
+`gopdsdk-build/v1`, including target identity, application import path, and a
+normalized absolute artifact path. Executed failures use the common envelope
+with `build-failed`, `output-conflict`, or `cancelled` and a structured
+remediation action; exit code 2 is retained and raw tool output is not emitted
+in the structured result. Dry-run plans remain text-only.
+
+Adding `--progress` (which requires JSON format) reserves stdout for the final
+envelope and writes `gopdsdk-progress/v1` events as compact NDJSON on stderr.
+Events have a one-based monotonically increasing sequence and the stable stages
+`planning`, `compilation`, `packaging`, and `cleanup`; only stages reached by
+the command are emitted. Consumers must ignore unknown stages within v1 and
+reject unknown event schemas. Cancellation propagates through the build
+context to owned child processes, after which reached cleanup runs before the
+final failure is returned.
+
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or

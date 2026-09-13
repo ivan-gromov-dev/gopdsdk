@@ -88,3 +88,17 @@ func TestDecodeProbeResultAllowsUnknownFieldsAndRejectsVersions(t *testing.T) {
 		t.Fatalf("unknown schema error = %v", err)
 	}
 }
+
+func TestWriteProgressProducesOneDeterministicEvent(t *testing.T) {
+	var output bytes.Buffer
+	event := ProgressEvent{Schema: ProgressSchema, Command: "build", Sequence: 1, Stage: "planning"}
+	if err := WriteProgress(&output, event); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), `{"schema":"gopdsdk-progress/v1","command":"build","sequence":1,"stage":"planning"}`+"\n"; got != want {
+		t.Fatalf("progress = %q, want %q", got, want)
+	}
+	if err := WriteProgress(&bytes.Buffer{}, ProgressEvent{Schema: ProgressSchema}); err == nil {
+		t.Fatal("invalid progress event accepted")
+	}
+}

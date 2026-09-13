@@ -15,7 +15,7 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	capabilities := Capabilities{Schema: CapabilitiesSchema, EnvelopeOptionalFields: []string{"failure.detail"}, Commands: []CommandCapability{
-		{Name: "build", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
+		{Name: "build", Modes: []string{"json", "text"}, ResultSchemas: []string{"gopdsdk-build/v1"}, EventSchemas: []string{ProgressSchema}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "capabilities", Modes: []string{"json"}, ResultSchemas: []string{CapabilitiesSchema}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: false},
 		{Name: "check", Modes: []string{"json", "text"}, ResultSchemas: []string{"gopdsdk-check/v1"}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},
 		{Name: "crashlog", Modes: []string{"text"}, ResultSchemas: []string{}, EventSchemas: []string{}, OptionalFields: []string{}, Cancellable: true},

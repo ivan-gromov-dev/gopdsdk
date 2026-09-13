@@ -32,6 +32,14 @@ requires an explicitly documented exception.
   deterministic failure envelopes, and redaction. These tests intentionally
   exercise failure fixtures only and do not claim SDK integration,
   device-build, USB, or physical-device readiness.
+- Began structured Simulator workflows with `gopdsdk build --format json` and
+  the `gopdsdk-build/v1` result. Optional `--progress` emits the versioned
+  `gopdsdk-progress/v1` NDJSON stream for planning, compilation, packaging, and
+  cleanup while stdout remains reserved for the final envelope. Structured
+  build failures are redacted and categorized without changing their nonzero
+  exit status. Unit and external-consumer failure-fixture tests cover schema
+  negotiation, stream separation, deterministic events, path normalization,
+  and redaction. No successful SDK build or Simulator launch was exercised.
 
 ## v1.1.0 (2026-09-11)
 

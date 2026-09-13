@@ -73,6 +73,32 @@ func DecodeProbeResult(data []byte) (ProbeResult, error) {
 // ProbeSchema identifies the stable read-only probe result.
 const ProbeSchema = "gopdsdk-probe/v1"
 
+// ProgressSchema identifies structured progress events written as NDJSON.
+const ProgressSchema = "gopdsdk-progress/v1"
+
+// ProgressEvent reports one ordered, cancellable command stage.
+type ProgressEvent struct {
+	Schema   string `json:"schema"`
+	Command  string `json:"command"`
+	Sequence int    `json:"sequence"`
+	Stage    string `json:"stage"`
+}
+
+// WriteProgress writes one compact JSON event followed by a newline.
+func WriteProgress(out io.Writer, event ProgressEvent) error {
+	if event.Schema != ProgressSchema || event.Command == "" || event.Sequence < 1 || event.Stage == "" {
+		return fmt.Errorf("invalid progress event")
+	}
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("encode progress event: %w", err)
+	}
+	if _, err := out.Write(append(data, '\n')); err != nil {
+		return fmt.Errorf("write progress event: %w", err)
+	}
+	return nil
+}
+
 // Capabilities describes the structured subset supported by this binary.
 type Capabilities struct {
 	Schema                 string              `json:"schema"`

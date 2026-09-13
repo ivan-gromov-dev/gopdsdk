@@ -1,7 +1,9 @@
 # Product roadmap
 
-Status: `v1.1.0` is prepared with the static-analyzer CLI and editor API,
-updated 2026-09-11.
+Status: `v1.1.0` is prepared with the static-analyzer CLI and editor API;
+post-1.1 IDE tooling contracts are implemented, updated 2026-09-13. Windows
+unit and external-consumer CLI evidence is complete; remaining platform and
+hardware evidence is listed below.
 
 This is the canonical post-1.0 planning document. Released capability and
 evidence live in [COMPATIBILITY.md](../COMPATIBILITY.md) and
@@ -41,35 +43,75 @@ coverage is not required for deprecated entry points, duplicate
 representations, implementation plumbing, Lua integration, or facilities
 replaced without loss of game functionality.
 
-## Post-1.0 real-game validation
+## Post-1.1 IDE tooling contracts
 
-Validate the stable SDK through one or more commercially realistic external
-games using only the published public module. Exercise multi-scene
-transitions, long-lived resource ownership, saves and recovery, audio,
-callbacks, lifecycle paths, performance budgets, packaging, and release
-operations. Findings become normal `v1.x` compatibility fixes or evidence;
-they do not retroactively gate `v1.0.0`.
+The VS Code and GoLand roadmaps both require the same additional gopdsdk
+contracts for build/run workflows, project health, analyzer configuration, and
+device operations. These are compatible CLI and tooling-protocol additions;
+they do not change the native public `playdate` API. Console-backed Simulator
+tasks and a basic `gopdsdk init` wizard may use the existing CLI, but an editor
+must not parse incidental human-readable output to provide rich or stable UI.
 
-## Released v1.1 analyzer and remaining IDE validation
+The shared SDK work was implemented once in this order:
 
-`v1.1.0` adds the version-matched `gopdsdk check` static analyzer and the
-`gopdsdk lsp` editor API. The released engine covers device portability,
-application shape and lifecycle, optional capabilities, callback-scoped data,
-resource ownership and retention, error and value contracts, opt-in hot-path
-risk, workspace metadata and assets, structured output, suppressions,
-baselines, safe fixes, incremental analysis, and LSP diagnostics. These are
-compatible CLI additions; the stable native `playdate` API is unchanged.
+1. **Completed — protocol foundation and capability negotiation.** Define a versioned
+   command-result envelope and, where applicable, a versioned stream of
+   cancellable progress events. Add an explicit machine-readable capability
+   query that reports supported commands, result/event schemas, and optional
+   fields so an older gopdsdk binary degrades to a known subset. Preserve the
+   existing human-readable CLI by default; structured mode must have a
+   documented stdout/stderr and exit-code contract, deterministic ordering,
+   forward-compatible decoding rules, and no secrets in diagnostics.
+2. **Completed — read-only health and discovery.** Add versioned structured results for
+   `doctor` and the Simulator, device-toolchain, and USB-connection probes.
+   Records must distinguish discovery from readiness, identify each check and
+   evidence level, carry typed failure categories, and expose focused
+   remediation data without embedding editor-specific presentation. Executable
+   discovery alone must never be reported as Simulator, device, or USB
+   readiness.
+3. **Completed — Simulator build and run.** Add structured final results for `build` and
+   `run`, including target identity, source locations for build failures,
+   artifact paths, typed failure categories, and progress stages for planning,
+   compilation, packaging, launch, and cleanup where they apply. Cancellation
+   must terminate owned child processes and leave artifact replacement rules
+   deterministic. Validate through an external game and the official Simulator
+   separately on each claimed host.
+4. **Completed — device deployment and logs.** Extend the same schemas to device build,
+   connection, install, launch, `crashlog`, and `errorlog` operations. Report
+   build, connection, deployment, launch, and retrieval as distinct stages;
+   never infer connection from tool discovery. Log retrieval remains an
+   explicit user action, and its structured form must separate metadata and
+   typed failures from verbatim device content. Device-build, USB, and physical
+   execution evidence remain separate gates.
+5. **Completed — analyzer administration.** Expose the existing version-matched rule
+   registry through a versioned machine-readable catalog rather than requiring
+   clients to copy rule metadata. Add deterministic baseline
+   create/update/validate operations around the existing
+   `gopdsdk-check-baseline/v1` contract, including stale-entry reporting and
+   atomic writes. CLI, LSP, VS Code, and GoLand must continue to share rule
+   identifiers, configuration semantics, and safe-fix behavior.
 
-Thin VS Code and GoLand integrations and external-game precision hardening
-remain active post-1.1 work. Until those checks pass, the release makes no IDE
-UI or default-ready-on-commercial-games claim.
+Cross-cutting acceptance for every phase includes unit coverage of schemas,
+unknown fields and versions, path normalization, cancellation, deterministic
+output, and redaction; external-consumer CLI tests using a separately built
+gopdsdk binary; and native CI on Windows, macOS, and Linux. Fixture-driven
+editor tests establish client integration only. SDK integration, Simulator,
+device build, USB, log retrieval, and physical-device claims require their
+corresponding separately named evidence.
 
-The ordered implementation plan, rule catalog, milestones, verification gates,
-and static-analysis limits live in
-[ANALYZER_ROADMAP.md](ANALYZER_ROADMAP.md). That document is the canonical
-source for analyzer scope; keep this product roadmap at the capability level.
-Integrated build, run, log, and debugger adapters remain a subsequent IDE
-tooling scope rather than analyzer evidence.
+Windows unit and external-consumer CLI acceptance covers all five phases,
+including the analyzer catalog and baseline administration. The installed SDK
+3.1.1 Simulator probe also passed on Windows as SDK-integration evidence.
+Native CI confirmation on macOS and Linux, consistent structured device-build
+acceptance, USB connection and log retrieval, and physical-device execution
+remain separate open evidence gates; they are not inferred from discovery or
+fixture results.
+
+The stable protocol and command contracts belong in [API.md](../API.md) when
+implemented, with unreleased behavior and evidence in
+[CHANGELOG.md](../CHANGELOG.md). Stable analyzer contracts and rule references
+remain in [API.md](../API.md); editor-specific UI and distribution remain in
+the extension repositories.
 
 ## Future — networking and multiplayer feasibility
 

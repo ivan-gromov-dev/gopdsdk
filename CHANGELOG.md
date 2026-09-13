@@ -7,6 +7,105 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Completed post-1.1 analyzer administration with the version-matched
+  `gopdsdk rules --format json` catalog and deterministic `gopdsdk baseline
+  create`, `update`, and `validate` operations. Baseline updates preserve
+  reasons for unchanged diagnostic identities, validation returns stale-entry
+  records, paths remain inside the module, and writes use same-directory
+  staging with rollback. Windows unit and external-consumer CLI coverage
+  exercise negotiation, deterministic catalog output, cancellation,
+  create/update/validate behavior, stale entries, containment, and cleanup.
+- Began the post-1.1 IDE tooling contract with `gopdsdk capabilities`, the
+  versioned `gopdsdk-tooling-result/v1` command-result envelope, and the
+  `gopdsdk-tooling-capabilities/v1` manifest. The deterministic query exposes
+  command support, structured result/event schemas, optional fields, and
+  cancellation without requiring editors to parse human-readable output.
+  Unit and external-consumer CLI coverage verify deterministic output,
+  forward-compatible unknown fields, unknown-version rejection, and
+  cancellation. This is Windows unit and external-consumer CLI evidence only;
+  no editor UI, Simulator, USB, or physical-device behavior was exercised.
+- Added `gopdsdk doctor --format json` with the versioned
+  `gopdsdk-doctor/v1` result. The schema separates tool discovery from
+  readiness, labels evidence, provides typed failures and focused remediation,
+  normalizes paths, and excludes raw probe errors. Unit and external-consumer
+  CLI tests cover the envelope and the discovery/readiness distinction. The
+  probes were not executed by these tests, so Simulator, device-build, USB,
+  and physical-device readiness are not claimed.
+- Added `--format json` to the read-only Simulator, device-toolchain, and USB
+  connection probes using the shared `gopdsdk-probe/v1` schema. Successful
+  results identify discovery, readiness, exact evidence level, and typed
+  values; executed failures retain a nonzero exit code while returning a
+  redacted category and remediation without duplicating raw errors on stderr.
+  Unit and external-consumer CLI tests cover negotiation, unknown versions,
+  deterministic failure envelopes, and redaction. These tests intentionally
+  exercise failure fixtures only and do not claim SDK integration,
+  device-build, USB, or physical-device readiness.
+- Began structured Simulator workflows with `gopdsdk build --format json` and
+  the `gopdsdk-build/v1` result. Optional `--progress` emits the versioned
+  `gopdsdk-progress/v1` NDJSON stream for planning, compilation, packaging, and
+  cleanup while stdout remains reserved for the final envelope. Structured
+  build failures are redacted and categorized without changing their nonzero
+  exit status. Unit and external-consumer failure-fixture tests cover schema
+  negotiation, stream separation, deterministic events, path normalization,
+  and redaction. No successful SDK build or Simulator launch was exercised.
+- Added `gopdsdk run --format json` with the `gopdsdk-run/v1` result and
+  optional `gopdsdk-progress/v1` build/launch events. Cancellation after build
+  now prevents Simulator launch, while successful launches retain the existing
+  detached-process behavior and expose their PID. Unit tests cover successful
+  structured orchestration with injected build/launch boundaries and redacted
+  launch failures; external-consumer CLI coverage exercises the build-failure
+  path. No real Simulator was launched.
+- Added `gopdsdk build device --format json` using the shared
+  `gopdsdk-build/v1` result with device target identity, normalized artifact
+  path, and static-RAM, ELF, and PDX byte metrics. Optional progress covers the
+  real planning, compilation, packaging, and cleanup boundaries. Unit and
+  external-consumer CLI tests exercise deterministic success projection and a
+  redacted failure fixture. No device build, USB operation, or hardware
+  execution was performed.
+- Added `gopdsdk run device --format json` with target-specific
+  `gopdsdk-run/v1` deployment, execution, and build-metric fields. Structured
+  progress distinguishes device build, deployment, launch, and cleanup;
+  failures retain the last operational stage as a typed category, with
+  cancellation taking precedence. Unit tests cover result projection, stage
+  classification, and redaction, while external-consumer CLI coverage uses a
+  build-failure fixture. No USB or physical-device action was performed.
+- Added structured `crashlog` and `errorlog` retrieval with the
+  `gopdsdk-device-log/v1` schema. Metadata is separate from base64-encoded
+  verbatim bytes; optional progress distinguishes connection and retrieval.
+  Sentinel-backed failures provide redacted categories for missing tools,
+  absent devices, absent logs, retrieval errors, and cancellation. Unit tests
+  cover arbitrary-byte preservation, path normalization, classification, and
+  redaction; external-consumer CLI tests cover missing-tool failures. No USB
+  connection or device log was accessed.
+- Added source-aware structured Simulator build failures. Verified compiler
+  coordinates inside the application root are normalized, deduplicated, and
+  sorted into `failure.locations`; generated, external, nonexistent, and
+  absolute output paths are excluded from the protocol. Known command stages
+  distinguish compilation, linking, and packaging failures without exposing
+  compiler messages or source excerpts. Windows unit coverage exercises path
+  containment, redaction, classification, and unsafe-location rejection; no
+  SDK compilation was run for this change.
+- Replaced destructive `.pdx` overwrite with a shared transactional directory
+  commit for Simulator and device builds. New artifacts are fully copied to a
+  sibling staging directory before an existing target is backed up and the new
+  directory is renamed into place; commit failure restores the prior target.
+  Unit coverage verifies successful replacement, conflict preservation,
+  cancellation preservation, and temporary-sibling cleanup. No SDK build was
+  required for this filesystem-level evidence.
+- Extended safe source locations and command-stage categories to structured
+  device builds. Simulator and device pipelines now share one bounded parser
+  only because both consume the same compiler coordinate contract. Device
+  tests cover TinyGo classification, application-root containment, and source
+  text redaction. No TinyGo build, SDK packaging, USB, or hardware execution
+  was performed.
+- Re-ran the installed Playdate SDK 3.1.1 Simulator probe on Windows after the
+  complete tooling-contract implementation; it returned a successful
+  `gopdsdk-probe/v1` result and is SDK-integration evidence. A separate device
+  package probe succeeded in text mode, while the structured device probe did
+  not pass consistently and the explicit USB probe reported `not-connected`;
+  structured device-build, USB, log-retrieval, and physical-device evidence
+  therefore remain open rather than being inferred from tool discovery.
+
 ## v1.1.0 (2026-09-11)
 
 - Added the compatible `gopdsdk check` static-analysis CLI and `gopdsdk lsp`

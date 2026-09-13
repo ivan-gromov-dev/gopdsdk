@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,20 +12,23 @@ import (
 	"strings"
 
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/runtime/simabi"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/artifactreplace"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/pdxsource"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 const sdkModule = "github.com/ivan-gromov-dev/gopdsdk"
 
 // Config identifies a Simulator application build.
 type Config struct {
-	SDKPath string
-	Package string
-	Output  string
-	Replace bool
+	SDKPath  string
+	Package  string
+	Output   string
+	Replace  bool
+	Progress func(string)
 }
 
 // Result describes the produced Simulator artifact.
@@ -52,6 +53,7 @@ type packageInfo struct {
 
 // Simulator builds an importable Go package into a Playdate Simulator .pdx.
 func Simulator(ctx context.Context, config Config) (Result, error) {
+	progress(config, "planning")
 	policy, err := hostpolicy.For(runtime.GOOS)
 	if err != nil {
 		return Result{}, err
@@ -106,7 +108,6 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("resolve output path: %w", err)
 	}
-	outputExists := false
 	if info, statErr := os.Stat(output); statErr == nil {
 		if !config.Replace {
 			return Result{}, fmt.Errorf("output already exists: %s", output)
@@ -114,7 +115,6 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		if !info.IsDir() {
 			return Result{}, fmt.Errorf("output path is not a directory: %s", output)
 		}
-		outputExists = true
 	} else if !os.IsNotExist(statErr) {
 		return Result{}, fmt.Errorf("inspect output path: %w", statErr)
 	}
@@ -139,6 +139,7 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 		return Result{}, err
 	}
 	defer cleanupArtifacts(cleanupPaths)
+	defer progress(config, "cleanup")
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create Source directory: %w", err)
@@ -174,23 +175,28 @@ func Simulator(ctx context.Context, config Config) (Result, error) {
 	}
 
 	for index, planned := range plan.Commands {
+		if index == 0 {
+			progress(config, "compilation")
+		} else if index == 1 {
+			progress(config, "packaging")
+		}
 		if err := executePlannedCommand(ctx, planned); err != nil {
-			return Result{}, err
+			return Result{}, tooldiagnostic.Attach(err, app.Dir)
 		}
 		if index == 0 {
 			_ = os.Remove(filepath.Join(sourceDir, "pdex.h"))
 		}
 	}
-	if outputExists {
-		if err := os.RemoveAll(output); err != nil {
-			return Result{}, fmt.Errorf("replace output: %w", err)
-		}
-	}
-	if err := copyDirectory(temporaryPDX, output); err != nil {
-		_ = os.RemoveAll(output)
+	if err := artifactreplace.Directory(ctx, temporaryPDX, output, config.Replace); err != nil {
 		return Result{}, fmt.Errorf("write output: %w", err)
 	}
 	return Result{PackageImport: app.ImportPath, Output: output}, nil
+}
+
+func progress(config Config, stage string) {
+	if config.Progress != nil {
+		config.Progress(stage)
+	}
 }
 
 func lookPathAny(candidates []string) (string, error) {
@@ -264,47 +270,5 @@ func renderGoMod(sdk, app module) string {
 }
 
 func commandError(action string, err error, output []byte) error {
-	detail := strings.TrimSpace(string(output))
-	if detail == "" {
-		return fmt.Errorf("%s: %w", action, err)
-	}
-	return fmt.Errorf("%s: %w: %s", action, err, detail)
-}
-
-func copyDirectory(source, target string) error {
-	if err := os.MkdirAll(target, 0o755); err != nil {
-		return err
-	}
-	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		relative, err := filepath.Rel(source, path)
-		if err != nil || relative == "." {
-			return err
-		}
-		destination := filepath.Join(target, relative)
-		if entry.IsDir() {
-			return os.MkdirAll(destination, 0o755)
-		}
-		return copyFile(path, destination)
-	})
-}
-
-func copyFile(source, target string) error {
-	input, err := os.Open(source)
-	if err != nil {
-		return err
-	}
-	defer input.Close()
-	output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	_, copyErr := io.Copy(output, input)
-	closeErr := output.Close()
-	if copyErr != nil {
-		return copyErr
-	}
-	return closeErr
+	return tooldiagnostic.New(action, err, output)
 }

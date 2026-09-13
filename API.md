@@ -28,6 +28,157 @@ performance evidence import
 generated runtime bridges, CLI build plans, and example internals are not
 public API.
 
+## IDE tooling protocol
+
+`gopdsdk capabilities` writes exactly one UTF-8 JSON value followed by a
+newline to stdout and writes nothing to stderr on success. The value uses the
+`gopdsdk-tooling-result/v1` envelope and contains a
+`gopdsdk-tooling-capabilities/v1` result. Its lexically ordered `commands`
+records list each supported command, its available modes, structured result and
+progress-event schemas, optional fields, and whether work is cancellable. A
+client must select only an advertised mode and schema; an empty schema list
+means that no command-result form of that kind is supported. Existing commands
+retain human-readable output unless their own documented structured mode is
+selected.
+
+`gopdsdk rules --format json` returns the exact version-matched analyzer
+inventory used by the binary as `gopdsdk-analyzer-contracts/v1` inside the
+tooling-result envelope. Rules are ordered by identifier and include their
+family, default severity, confidence, targets, normative contract identifiers,
+experimental status, suppression policy, and safe-fix policy. Clients must not
+copy this metadata into an editor-specific catalog.
+
+`gopdsdk baseline create --input <report> --output <baseline>` creates a
+`gopdsdk-check-baseline/v1` file from a `gopdsdk-check/v1` report and refuses to
+replace an existing file. `baseline update` replaces the baseline with current
+report identities, preserves the reason for unchanged identities, and uses
+`--reason` for new entries. `baseline validate` validates the baseline and,
+when `--input` is supplied, reports identities absent from the current report
+as ordered `staleEntries`. All operations return
+`gopdsdk-baseline-result/v1` in the tooling-result envelope. Paths must remain
+inside the module root, entries are deterministic, and writes use a
+same-directory staging file with restoration if replacement fails.
+
+Tooling decoders must ignore unknown object fields and treat an unknown schema
+identifier as unsupported. Within a schema version, existing fields retain
+their meaning and new fields are optional. A successful envelope has `ok: true`
+and `result`; a failed envelope has `ok: false` and `failure`. Structured
+commands reserve stdout for protocol JSON. Human-readable process errors use
+stderr and a nonzero exit code until that command advertises a structured
+failure contract. Diagnostics must not include source text, environment
+values, credentials, or other secrets.
+
+`gopdsdk doctor --format json` returns `gopdsdk-doctor/v1` inside the
+tooling-result envelope. `tools` means executable discovery only. Each
+lexically ordered `checks` record independently reports `discovered`, readiness
+`status`, `evidenceLevel`, and optional typed `failureCategory` and structured
+`remediation`. `unverified` never means ready: Simulator and device-build
+checks become ready only after their corresponding `--probe` succeeds, while
+device deployment remains unverified until the separate connection probe is
+run. Structured paths use forward slashes on every host. The JSON form omits
+free-form probe errors so diagnostics cannot expose source, environment, or
+credential data; the default text form remains available for an interactive
+operator.
+
+`gopdsdk probe simulator --format json`, `gopdsdk probe device --format
+json`, and `gopdsdk probe connection --format json` return the shared
+`gopdsdk-probe/v1` result. The result identifies the probe, prerequisite
+discovery, readiness, evidence level, and a name-sorted list of typed values.
+Simulator readiness represents an SDK-integration build/package probe and does
+not claim that the Simulator was launched unless the optional event value is
+present. Device readiness represents a device build only. Connection readiness
+represents the explicit read-only USB probe only; executable discovery alone
+cannot produce it.
+
+An executed probe failure writes `ok: false` with a stable category and
+structured remediation, returns exit code 2, and does not repeat the raw error
+on stderr. Current categories are `cancelled`, `not-connected`, and
+`probe-failed`. Argument and flag errors occur before probe execution and retain
+the normal human-readable stderr contract.
+
+`gopdsdk build --format json` returns a successful Simulator build as
+`gopdsdk-build/v1`, including target identity, application import path, and a
+normalized absolute artifact path. Executed failures use the common envelope
+with `build-failed`, `output-conflict`, or `cancelled` and a structured
+remediation action; exit code 2 is retained and raw tool output is not emitted
+in the structured result. Dry-run plans remain text-only.
+
+When the Simulator compiler reports one-based file coordinates, structured
+failures classify the operation as `compilation-failed` and may include
+`failure.locations` records containing only application-relative slash paths,
+line, and column. Duplicate locations are removed and records are sorted by
+path and position. Coordinates outside the application root, generated build
+workspace files, nonexistent files, raw compiler messages, and source excerpts
+are omitted. Link and package command failures use `link-failed` and
+`packaging-failed` respectively when the failing stage is known.
+
+Adding `--progress` (which requires JSON format) reserves stdout for the final
+envelope and writes `gopdsdk-progress/v1` events as compact NDJSON on stderr.
+Events have a one-based monotonically increasing sequence and the stable stages
+`planning`, `compilation`, `packaging`, and `cleanup`; only stages reached by
+the command are emitted. Consumers must ignore unknown stages within v1 and
+reject unknown event schemas. Cancellation propagates through the build
+context to owned child processes, after which reached cleanup runs before the
+final failure is returned.
+
+Simulator and device artifact replacement is transactional at the directory
+boundary. A build first copies the complete new `.pdx` into a uniquely named
+sibling staging directory. Without `--force`, an existing target remains an
+`output-conflict`. With `--force`, the existing directory is renamed to a
+sibling backup, the staged directory is renamed into place, and a failed commit
+restores the backup before returning. Cancellation before commit removes the
+staging directory and leaves the previous target unchanged. Successful commit
+removes the backup; temporary sibling paths are never reported as artifacts.
+
+`gopdsdk run --format json` builds with deterministic replacement semantics,
+launches Playdate Simulator, and returns `gopdsdk-run/v1` with target, package,
+normalized artifact path, and Simulator process ID. Its optional `--progress`
+stream forwards the reached build stages under command `run` and adds `launch`.
+A cancellation observed after building prevents launch. Structured failures use
+`build-failed`, `launch-failed`, or `cancelled`, keep exit code 2, and omit raw
+build and launch errors. A successful command intentionally leaves the launched
+Simulator running; the PID identifies that independently owned process.
+
+`gopdsdk build device --format json` uses `gopdsdk-build/v1` with target
+`device`. In addition to package and normalized artifact path, the required
+`metrics` record contains `staticRAMBytes`, `elfBytes`, and `pdxBytes` measured
+from the linked and packaged artifact. It does not imply deployment, USB, or
+physical execution. Optional `--progress` emits command `build device` with
+the same planning, compilation, packaging, and cleanup stages. Failures use
+`build-failed`, `output-conflict`, or `cancelled`, retain exit code 2, and do
+not expose raw compiler or linker output.
+
+Device build failures use the same `failure.locations` containment and
+normalization rules as Simulator builds. TinyGo and GCC compilation failures,
+ELF link failures, and PDC packaging failures are distinguished as
+`compilation-failed`, `link-failed`, and `packaging-failed`. Coordinates from
+generated adapters, SDK setup sources, linker diagnostics outside the game,
+and other non-application files are omitted.
+
+`gopdsdk run device --format json` builds, installs, and sends the device launch
+command before returning `gopdsdk-run/v1` with target `device`, package,
+deployment and execution summaries, and build metrics. It deliberately has no
+Simulator PID or persistent artifact field. Optional progress adds distinct
+`deployment` and `launch` stages between packaging and final cleanup. Failures
+are categorized by the last reached operation as `build-failed`,
+`deployment-failed`, or `launch-failed`; cancellation takes precedence as
+`cancelled`. A successful install or launch command is USB evidence only and
+does not claim sustained physical execution or runtime correctness.
+
+`gopdsdk crashlog --format json` and `gopdsdk errorlog --format json` remain
+explicit user actions and return `gopdsdk-device-log/v1`. `metadata` contains
+the log kind, normalized mounted-file path, and exact byte count. `content` is
+separate and uses base64 so decoding reproduces the verbatim device bytes even
+when they are not valid UTF-8. The tooling layer never interprets, redacts, or
+rewrites successful device log content.
+
+Optional `--progress` reports reached `connection` and `retrieval` stages using
+the shared progress schema. Failures contain no device output or local path and
+use `not-connected`, `tool-not-found`, `log-not-found`, `retrieval-failed`, or
+`cancelled` with focused remediation. Structured log retrieval retains exit
+code 2. Merely discovering `pdutil` does not establish USB readiness, and no log
+is retrieved without one of these explicit commands.
+
 Applications that need device-safe JSON import
 `github.com/ivan-gromov-dev/gopdsdk/playdate/json`. The package replaces the official
 callback JSON surface without C callbacks, userdata, reflection, `defer`, or

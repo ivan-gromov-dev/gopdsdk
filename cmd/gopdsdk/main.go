@@ -17,6 +17,7 @@ import (
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/initproject"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/simprobe"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/simrun"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/toolingprotocol"
 )
 
 func main() {
@@ -31,6 +32,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		err = fmt.Errorf("expected a command (try \"gopdsdk doctor\")")
 	} else {
 		switch args[0] {
+		case "capabilities":
+			err = toolingprotocol.Run(ctx, args, stdout)
 		case "build":
 			if len(args) > 1 && args[1] == "device" {
 				err = deviceprobe.Run(ctx, args, stdout, stderr)
@@ -45,6 +48,15 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 				err = &analyzer.CommandError{Code: analyzer.ExitInternal, Err: optionsErr}
 			} else {
 				err = analyzer.RunCheck(ctx, args, stdout, stderr, options)
+			}
+		case "rules", "baseline":
+			options, optionsErr := analyzer.DefaultCheckOptions()
+			if optionsErr != nil {
+				err = &analyzer.CommandError{Code: analyzer.ExitInternal, Err: optionsErr}
+			} else if args[0] == "rules" {
+				err = analyzer.RunRules(ctx, args, stdout, stderr, options)
+			} else {
+				err = analyzer.RunBaseline(ctx, args, stdout, stderr, options)
 			}
 		case "lsp":
 			options, optionsErr := analyzer.DefaultCheckOptions()
@@ -85,7 +97,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if err != nil {
-		fmt.Fprintln(stderr, "gopdsdk:", err)
+		if silent, ok := err.(interface{ Silent() bool }); !ok || !silent.Silent() {
+			fmt.Fprintln(stderr, "gopdsdk:", err)
+		}
 		if coded, ok := err.(interface{ ExitCode() int }); ok {
 			return coded.ExitCode()
 		}

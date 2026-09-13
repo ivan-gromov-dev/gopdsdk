@@ -297,5 +297,5 @@ func (inventory Inventory) JSON() ([]byte, error) {
 }
 
 func validDocumentationReference(reference string) bool {
-	return strings.HasPrefix(reference, "API.md#") || strings.HasPrefix(reference, "docs/ANALYZER_ROADMAP.md#")
+	return strings.HasPrefix(reference, "API.md#")
 }

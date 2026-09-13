@@ -27,11 +27,15 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer, options O
 	flags.SetOutput(stderr)
 	sdkPath := flags.String("sdk", "", "path to the Playdate SDK")
 	probe := flags.Bool("probe", false, "run build probes for discovered toolchains")
+	format := flags.String("format", "text", "output format: text or json")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 {
 		return fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+	if *format != "text" && *format != "json" {
+		return fmt.Errorf("unsupported doctor format %q", *format)
 	}
 
 	report, err := Inspect(ctx, Config{SDKPath: *sdkPath})
@@ -41,6 +45,9 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer, options O
 	if *probe {
 		runSimulatorProbe(ctx, &report, options.SimulatorProbe)
 		runDeviceProbe(ctx, &report, options.DeviceProbe)
+	}
+	if *format == "json" {
+		return writeStructuredReport(stdout, report)
 	}
 	return writeReport(stdout, report)
 }

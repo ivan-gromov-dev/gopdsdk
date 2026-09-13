@@ -16,10 +16,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/artifactreplace"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/buildplan"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/gomodule"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/hostpolicy"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/pdxsource"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/shared/tooldiagnostic"
 )
 
 // Result records the verified device toolchain stage.
@@ -54,10 +56,12 @@ type Config struct {
 	Run          bool
 	ArtifactsDir string
 	Memory       buildplan.DeviceMemoryStrategy
+	Progress     func(string)
 }
 
 // Probe compiles and links a structural Playdate device ELF.
 func Probe(ctx context.Context, config Config) (Result, error) {
+	deviceProgress(config, "planning")
 	if config.SDKPath == "" {
 		return Result{}, fmt.Errorf("Playdate SDK path is required")
 	}
@@ -144,6 +148,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		return Result{}, err
 	}
 	defer cleanupArtifacts(cleanupPaths)
+	defer deviceProgress(config, "cleanup")
 	for _, file := range []struct {
 		name     string
 		contents string
@@ -157,9 +162,10 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("write %s: %w", file.name, err)
 		}
 	}
+	deviceProgress(config, "compilation")
 	for index, planned := range plan.Commands[:7] {
 		if _, err := runPlannedCommand(ctx, planned); err != nil {
-			return Result{}, err
+			return Result{}, tooldiagnostic.Attach(err, app.Dir)
 		}
 		if index == 2 {
 			bootstrap := bootstrapSource
@@ -178,7 +184,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	inspectionOutput, err := runPlannedCommand(ctx, plan.Commands[7])
 	if err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	inspection := inspectionOutput
 	for _, check := range []struct {
@@ -219,14 +225,14 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 	}
 	undefinedOutput, err := runPlannedCommand(ctx, plan.Commands[8])
 	if err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	if unresolved := strongUndefinedSymbols(undefinedOutput); len(unresolved) != 0 {
 		return Result{}, fmt.Errorf("inspect unresolved ELF symbols: %s", strings.Join(unresolved, ", "))
 	}
 	symbolOutput, err := runPlannedCommand(ctx, plan.Commands[9])
 	if err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	lowerSymbols := strings.ToLower(symbolOutput)
 	for _, forbidden := range []string{"stm32", "initclk", "machine.tim"} {
@@ -242,6 +248,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			return Result{}, fmt.Errorf("inspect conservative GC heap: %w", err)
 		}
 	}
+	deviceProgress(config, "packaging")
 	sourceDir := filepath.Join(workDir, "Source")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create device package source: %w", err)
@@ -257,7 +264,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		return Result{}, fmt.Errorf("write device pdxinfo: %w", err)
 	}
 	if _, err := runPlannedCommand(ctx, plan.Commands[10]); err != nil {
-		return Result{}, err
+		return Result{}, tooldiagnostic.Attach(err, app.Dir)
 	}
 	packagedBinary := filepath.Join(pdxPath, "pdex.bin")
 	if err := requireNonEmptyFile(packagedBinary); err != nil {
@@ -288,20 +295,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		if err != nil {
 			return Result{}, fmt.Errorf("resolve output path: %w", err)
 		}
-		if info, statErr := os.Stat(outputPath); statErr == nil {
-			if !config.Replace {
-				return Result{}, fmt.Errorf("output already exists: %s", outputPath)
-			}
-			if !info.IsDir() {
-				return Result{}, fmt.Errorf("output path is not a directory: %s", outputPath)
-			}
-			if err := os.RemoveAll(outputPath); err != nil {
-				return Result{}, fmt.Errorf("replace output: %w", err)
-			}
-		} else if !os.IsNotExist(statErr) {
-			return Result{}, fmt.Errorf("inspect output path: %w", statErr)
-		}
-		if err := copyDirectory(pdxPath, outputPath); err != nil {
+		if err := artifactreplace.Directory(ctx, pdxPath, outputPath, config.Replace); err != nil {
 			return Result{}, fmt.Errorf("write output: %w", err)
 		}
 		artifactOutput = outputPath
@@ -313,6 +307,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		pending = "device deployment, hardware execution, and conservative-GC soak"
 	}
 	if config.Install || config.Run {
+		deviceProgress(config, "deployment")
 		pdutil := filepath.Join(sdkPath, "bin", policy.PDUtilName)
 		if info, statErr := os.Stat(pdutil); statErr != nil || info.IsDir() {
 			return Result{}, fmt.Errorf("required file %s is unavailable", pdutil)
@@ -327,6 +322,7 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 			pending = "hardware execution and conservative-GC soak"
 		}
 		if config.Run {
+			deviceProgress(config, "launch")
 			runOutput, err := runDeviceProbe(ctx, workDir, pdutil, "/Games/"+pdxName)
 			if err != nil {
 				return Result{}, err
@@ -350,6 +346,12 @@ func Probe(ctx context.Context, config Config) (Result, error) {
 		Pending: pending,
 		Metrics: metrics,
 	}, nil
+}
+
+func deviceProgress(config Config, stage string) {
+	if config.Progress != nil {
+		config.Progress(stage)
+	}
 }
 
 func measureDeviceArtifact(elfPath, pdxPath string) (Metrics, error) {
@@ -424,23 +426,6 @@ func copyFile(source, destination string) error {
 		return err
 	}
 	return os.WriteFile(destination, contents, 0o644)
-}
-
-func copyDirectory(source, destination string) error {
-	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		relative, err := filepath.Rel(source, path)
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(destination, relative)
-		if entry.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		return copyFile(path, target)
-	})
 }
 
 func requireNonEmptyFile(path string) error {
@@ -612,11 +597,7 @@ func firstLine(value string) string {
 }
 
 func commandError(action string, err error, output []byte) error {
-	detail := strings.TrimSpace(string(output))
-	if detail == "" {
-		return fmt.Errorf("%s: %w", action, err)
-	}
-	return fmt.Errorf("%s: %w: %s", action, err, detail)
+	return tooldiagnostic.New(action, err, output)
 }
 
 func renderProbeSource(modulePath, applicationImport string) string {

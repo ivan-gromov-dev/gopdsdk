@@ -44,7 +44,7 @@ docs/*
 .cache/
 
 # Generated SDK packages and Simulator diagnostics
-build/
+/build/
 
 Build artifacts
 .sentry-native/

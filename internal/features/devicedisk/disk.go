@@ -20,6 +20,8 @@ var (
 	ErrNoDevice        = errors.New("no Playdate device detected")
 	ErrNotMounted      = errors.New("Playdate data disk is not mounted")
 	ErrToolUnavailable = errors.New("pdutil is unavailable")
+	ErrEject           = errors.New("Playdate data disk eject failed")
+	ErrReconnect       = errors.New("Playdate did not reconnect after eject")
 	execCommand        = exec.CommandContext
 	probeConnection    = deviceconnect.Probe
 )
@@ -53,19 +55,23 @@ func Unmount(ctx context.Context, sdkPath string) (Result, error) {
 	if !ok {
 		return Result{}, ErrNotMounted
 	}
-	name, args := ejectCommand(root)
-	if output, err := execCommand(ctx, name, args...).CombinedOutput(); err != nil {
-		return Result{}, fmt.Errorf("eject data disk: %w: %s", err, strings.TrimSpace(string(output)))
+	if err := ejectVolume(ctx, root); err != nil {
+		return Result{}, fmt.Errorf("%w: %v", ErrEject, err)
 	}
+	reconnectCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		if _, err := probeConnection(ctx, deviceconnect.Config{SDKPath: sdkPath}); err == nil {
+		if _, err := probeConnection(reconnectCtx, deviceconnect.Config{SDKPath: sdkPath}); err == nil {
 			return Result{Mode: "connected"}, nil
 		}
 		select {
-		case <-ctx.Done():
-			return Result{}, ctx.Err()
+		case <-reconnectCtx.Done():
+			if ctx.Err() != nil {
+				return Result{}, ctx.Err()
+			}
+			return Result{}, ErrReconnect
 		case <-ticker.C:
 		}
 	}
@@ -85,17 +91,6 @@ func toolPath(sdkPath string) (string, error) {
 	}
 	return path, nil
 }
-func ejectCommand(root string) (string, []string) {
-	switch runtime.GOOS {
-	case "windows":
-		return "mountvol.exe", []string{root, "/p"}
-	case "darwin":
-		return "diskutil", []string{"eject", root}
-	default:
-		return "eject", []string{root}
-	}
-}
-
 func FindMounted() (string, bool) {
 	for _, root := range mountCandidates() {
 		if isPlaydateRoot(root) {

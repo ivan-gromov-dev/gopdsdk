@@ -70,6 +70,12 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 			if errors.Is(err, ErrNotMounted) {
 				category, action = "not-mounted", "mount-device-disk"
 			}
+			if errors.Is(err, ErrEject) {
+				category, action = "eject-failed", "close-device-files-and-retry"
+			}
+			if errors.Is(err, ErrReconnect) {
+				category, action = "reconnect-timeout", "check-device-connection"
+			}
 			_ = toolingprotocol.WriteFailure(stdout, command, category, &toolingprotocol.Remediation{Action: action})
 			return &toolingprotocol.SilentError{Err: err}
 		}

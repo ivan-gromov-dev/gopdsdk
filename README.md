@@ -211,6 +211,14 @@ Retrieve `errorlog.txt` through the same flow with:
 go run ./cmd/gopdsdk errorlog --sdk /path/to/PlaydateSDK
 ```
 
+Enter Playdate Data Disk mode explicitly, or safely eject the mounted disk and
+wait for the normal USB connection to return:
+
+```text
+go run ./cmd/gopdsdk device disk mount --sdk /path/to/PlaydateSDK
+go run ./cmd/gopdsdk device disk unmount --sdk /path/to/PlaydateSDK
+```
+
 Both commands read but do not modify the selected log. Log contents are written
 to stdout, so they can be redirected to a file, and the resolved source path is
 written to stderr. Mounting changes the connected Playdate into data-disk mode;

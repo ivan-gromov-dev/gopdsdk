@@ -82,7 +82,9 @@ The shared SDK work was implemented once in this order:
    never infer connection from tool discovery. Log retrieval remains an
    explicit user action, and its structured form must separate metadata and
    typed failures from verbatim device content. Device-build, USB, and physical
-   execution evidence remain separate gates.
+   execution evidence remain separate gates. Explicit Data Disk mount and safe
+   eject operations expose a distinct disk state and confirm USB reconnection;
+   host eject and physical-device behavior remain external evidence gates.
 5. **Completed — analyzer administration.** Expose the existing version-matched rule
    registry through a versioned machine-readable catalog rather than requiring
    clients to copy rule metadata. Add deterministic baseline

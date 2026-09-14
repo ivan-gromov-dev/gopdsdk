@@ -7,6 +7,12 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Added versioned `gopdsdk device disk mount|unmount` operations. Mount delegates
+  to the official `pdutil datadisk`; unmount uses the host eject operation and
+  waits for a successful USB connection probe before reporting `connected`.
+  Unit and CLI tests do not claim physical-device or cross-platform eject
+  evidence.
+
 - Reject the CLI-only `shared` target in LSP configuration updates while still
   applying adjacent valid settings, preventing a delayed configuration error;
   editor targets remain `simulator`, `device`, and `both`, each with shared

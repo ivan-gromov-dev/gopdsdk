@@ -11,6 +11,7 @@ import (
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/analyzer"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/build"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/deviceconnect"
+	"github.com/ivan-gromov-dev/gopdsdk/internal/features/devicedisk"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/devicelog"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/deviceprobe"
 	"github.com/ivan-gromov-dev/gopdsdk/internal/features/doctor"
@@ -42,6 +43,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			}
 		case "crashlog", "errorlog":
 			err = devicelog.Run(ctx, args, stdout, stderr)
+		case "device":
+			err = devicedisk.Run(ctx, args, stdout, stderr)
 		case "check":
 			options, optionsErr := analyzer.DefaultCheckOptions()
 			if optionsErr != nil {

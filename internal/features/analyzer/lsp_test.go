@@ -145,6 +145,17 @@ func TestLSPTargetsAlwaysIncludeSharedAnalysis(t *testing.T) {
 	}
 }
 
+func TestLSPSettingsRejectSharedAsEditorTarget(t *testing.T) {
+	workspace := &lspWorkspace{Target: "device"}
+	applyLSPSettings(workspace, mustJSON(t, map[string]any{"target": "shared", "deep": true}))
+	if workspace.Target != "device" {
+		t.Fatalf("invalid editor target replaced target with %q", workspace.Target)
+	}
+	if !workspace.Deep {
+		t.Fatal("valid settings beside an invalid target were not applied")
+	}
+}
+
 func frameLSP(t *testing.T, value any) []byte {
 	t.Helper()
 	data := mustJSON(t, value)

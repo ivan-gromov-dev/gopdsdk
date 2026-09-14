@@ -7,6 +7,10 @@ requires an explicitly documented exception.
 
 ## Unreleased
 
+- Reject the CLI-only `shared` target in LSP configuration updates while still
+  applying adjacent valid settings, preventing a delayed configuration error;
+  editor targets remain `simulator`, `device`, and `both`, each with shared
+  analysis included.
 - Completed post-1.1 analyzer administration with the version-matched
   `gopdsdk rules --format json` catalog and deterministic `gopdsdk baseline
   create`, `update`, and `validate` operations. Baseline updates preserve

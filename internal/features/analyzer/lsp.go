@@ -305,7 +305,7 @@ func applyLSPSettings(workspace *lspWorkspace, raw json.RawMessage) {
 	if json.Unmarshal(raw, &settings) != nil {
 		return
 	}
-	if settings.Target == "shared" || settings.Target == "simulator" || settings.Target == "device" || settings.Target == "both" {
+	if settings.Target == "simulator" || settings.Target == "device" || settings.Target == "both" {
 		workspace.Target = settings.Target
 	}
 	workspace.Rules, workspace.Categories, workspace.Excluded, workspace.Deep = settings.Rules, settings.Categories, settings.ExcludeRules, settings.Deep

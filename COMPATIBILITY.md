@@ -1,15 +1,18 @@
 # Compatibility and evidence
 
-The `v1.1.0` release retains the exact native toolchain profile accepted by the
-published `v1.0.0` baseline.
+The prepared, unpublished `v1.2.0` release retains the exact native toolchain
+profile accepted by the published `v1.0.0` baseline.
 Other versions are not rejected only because their version differs, but remain
 `UNVERIFIED` until the relevant probe and acceptance level passes.
 
-The `v1.1.0` analyzer and LSP facade have Windows unit and external-consumer
-CLI evidence. The full repository suite and `go vet ./...` pass with Go 1.26.5.
-Native CI on Windows, macOS, and Linux for the release commit remains pending;
-VS Code and GoLand UI integration, Simulator execution, USB deployment, and
-physical-device behavior were not exercised for the analyzer release.
+The `v1.2.0` tooling contracts, analyzer administration, structured build/run,
+probe and device-log results, and device-disk routing have Windows unit and
+external-consumer CLI evidence. The release-candidate worktree passed
+formatting, `go test ./...`, `go vet ./...`, `git diff --check`, and
+`gopdsdk doctor` on Windows with Go 1.26.5 and workspace-local Go caches.
+Native CI for the exact release commit, post-tag proxy verification,
+macOS/Linux SDK integration, structured device-build readiness, USB/log
+retrieval, and physical-device behavior remain unverified.
 
 ## Verified toolchain
 

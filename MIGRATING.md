@@ -1,5 +1,21 @@
 # Migration guides
 
+## Migrating to v1.2.0
+
+`v1.2.0` is a compatible CLI and tooling-protocol expansion. It adds stable
+machine-readable capability negotiation, structured doctor/probe/build/run and
+device-log results, analyzer rule-catalog and baseline administration commands,
+and `gopdsdk device disk mount|unmount`. It does not remove, rename, deprecate,
+or intentionally change the documented native `playdate` API, so existing games
+can update their module requirement without source changes.
+
+Editor integrations should negotiate `gopdsdk capabilities` and consume the
+documented versioned schemas instead of parsing human-readable output. LSP
+configuration accepts only `simulator`, `device`, and `both`; the CLI-only
+`shared` target remains available to `gopdsdk check`. Device-disk unmount is an
+explicit host operation, and readiness must still be established by the
+subsequent USB connection probe rather than tool discovery alone.
+
 ## Migrating to v1.1.0
 
 `v1.1.0` is a compatible CLI expansion. It adds `gopdsdk check` for batch and

@@ -5,27 +5,30 @@ documented public API and behavior follow semantic versioning. Deprecations
 remain available throughout `v1.x` unless a security or correctness guarantee
 requires an explicitly documented exception.
 
-## Unreleased
+## v1.2.0 (2026-09-17)
+
+This release contains compatible CLI and tooling-protocol additions plus
+correctness fixes. It does not deprecate or intentionally break any documented
+`v1.x` API.
 
 - Added versioned `gopdsdk device disk mount|unmount` operations. Mount delegates
   to the official `pdutil datadisk`; unmount uses the host eject operation and
   waits for a successful USB connection probe before reporting `connected`.
   Unit and CLI tests do not claim physical-device or cross-platform eject
   evidence.
-
 - Reject the CLI-only `shared` target in LSP configuration updates while still
   applying adjacent valid settings, preventing a delayed configuration error;
   editor targets remain `simulator`, `device`, and `both`, each with shared
   analysis included.
-- Completed post-1.1 analyzer administration with the version-matched
+- Added analyzer administration with the version-matched
   `gopdsdk rules --format json` catalog and deterministic `gopdsdk baseline
-  create`, `update`, and `validate` operations. Baseline updates preserve
+create`, `update`, and `validate` operations. Baseline updates preserve
   reasons for unchanged diagnostic identities, validation returns stale-entry
   records, paths remain inside the module, and writes use same-directory
   staging with rollback. Windows unit and external-consumer CLI coverage
   exercise negotiation, deterministic catalog output, cancellation,
   create/update/validate behavior, stale entries, containment, and cleanup.
-- Began the post-1.1 IDE tooling contract with `gopdsdk capabilities`, the
+- Added the IDE tooling-contract foundation with `gopdsdk capabilities`, the
   versioned `gopdsdk-tooling-result/v1` command-result envelope, and the
   `gopdsdk-tooling-capabilities/v1` manifest. The deterministic query exposes
   command support, structured result/event schemas, optional fields, and

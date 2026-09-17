@@ -5,7 +5,7 @@ documented public API and behavior follow semantic versioning. Deprecations
 remain available throughout `v1.x` unless a security or correctness guarantee
 requires an explicitly documented exception.
 
-## v1.2.0 (prepared 2026-09-17; unpublished)
+## v1.2.0 (2026-09-17)
 
 This release contains compatible CLI and tooling-protocol additions plus
 correctness fixes. It does not deprecate or intentionally break any documented

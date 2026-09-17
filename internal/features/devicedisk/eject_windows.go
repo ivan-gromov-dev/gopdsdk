@@ -16,7 +16,7 @@ func ejectVolume(ctx context.Context, root string) error {
 	if len(drive) != 2 || drive[1] != ':' {
 		return fmt.Errorf("invalid drive %q", drive)
 	}
-	script := fmt.Sprintf(`$item=(New-Object -ComObject Shell.Application).Namespace(17).ParseName('%s'); if ($null -eq $item) { exit 2 }; $item.InvokeVerb('Eject')`, drive)
+	script := fmt.Sprintf(`$item=(New-Object -ComObject Shell.Application).Namespace(17).ParseName('%s'); if ($null -eq $item) { exit 2 }; $verb=$item.Verbs() | Where-Object { ($_.Name -replace '&','') -eq 'Eject' } | Select-Object -First 1; if ($null -eq $verb) { exit 3 }; $verb.DoIt(); Start-Sleep -Seconds 2; if (Test-Path '%s\') { exit 4 }`, drive, drive)
 	output, err := execCommand(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("request Explorer eject for %s: %w: %s", drive, err, strings.TrimSpace(string(output)))

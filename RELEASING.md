@@ -1,8 +1,10 @@
 # Release procedure
 
-The latest prepared release is `v1.1.0`. Go module versions come from Git
-tags; no separate VERSION file is maintained. The procedure below applies to
-the next planned release selected from the roadmap.
+The current prepared release is `v1.2.0`; it is not published until its commit,
+tag, pushed refs, hosted release, and post-tag verification are completed
+explicitly. Go module versions come from Git tags; no separate VERSION file is
+maintained. The procedure below applies to the next planned release selected
+from the roadmap.
 
 ## Release gates
 
